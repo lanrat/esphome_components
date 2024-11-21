@@ -7,6 +7,8 @@
 namespace esphome {
 namespace auto_brightness {
 
+// TODO expose a switch to enable/disable
+
 class AutoBrightness : public Component {
     public:
         void dump_config() override;

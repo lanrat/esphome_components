@@ -4,4 +4,4 @@ Play Conway's Game of Life on an [ESPHome Display!](https://esphome.io/component
 
 ## Credits
 
-inspired from: https://github.com/jackmachiela/PhotoLife
+Inspired from: https://github.com/jackmachiela/PhotoLife

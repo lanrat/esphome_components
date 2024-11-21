@@ -27,6 +27,7 @@ const auto color_age_n = esphome::Color(0,0,128);
 
 class GameOFLife : public Component {
     public:
+        GameOFLife();
         void dump_config() override;
         void setup() override;
         void loop() override;
@@ -34,10 +35,11 @@ class GameOFLife : public Component {
 
         void set_display(display::Display *);
         void set_starting_density(int);
-        void set_color_off(esphome::Color &);
-        void set_color_age_1(esphome::Color &);
-        void set_color_age_2(esphome::Color &);
-        void set_color_age_n(esphome::Color &);
+        void set_color_off(esphome::Color);
+        void set_color_age_1(esphome::Color);
+        void set_color_age_2(esphome::Color);
+        void set_color_age_n(esphome::Color);
+        void set_spark(bool spark);
         
         uint get_population();
         uint get_top_population();
@@ -50,15 +52,14 @@ class GameOFLife : public Component {
     protected:
         void nextIteration();
         esphome::Color color_off, color_age_1, color_age_2, color_age_n;
-        uint starting_density;
-        std::vector<std::vector<char>> current_state;
-        display::Display * display;
+        uint starting_density_;
+        std::vector<std::vector<char>> current_state_;
+        display::Display * display_;
         int rows, cols;
-        uint iteration;
-        uint alive;
-        uint alive_same_count;
-        uint topWeight;
-        esphome::Mutex mutex;
+        uint iteration_;
+        uint alive_, alive_same_count_, topWeight_;
+        esphome::Mutex mutex_;
+        bool run_spark_;
 };
 
 } // namespace game_of_life
