@@ -19,6 +19,7 @@ void TetrisAnimation::setup() {
 
 void TetrisAnimation::set_display(display::Display *display) {
   this->display = display;
+  this->tetris.display = display;
 }
 
 void TetrisAnimation::set_time_source(time::RealTimeClock *time) {
