@@ -16,14 +16,16 @@ License along with this library; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
 */
 
-
 #include "TetrisMatrixDraw.h"
+
+// // this lets esphome logging functions work here
+// using esphome::esp_log_printf_;
+
+namespace esphome {
+namespace tetris_animation {
+
 #include "TetrisNumbers.h"
 #include "TetrisLetters.h"
-
-
-// this lets esphome logging functions work here
-using esphome::esp_log_printf_;
 
 TetrisMatrixDraw::TetrisMatrixDraw(esphome::display::Display *display)	{
     this->display = display;
@@ -773,3 +775,6 @@ void TetrisMatrixDraw::resetNumStates(){
         this->numstates[i].x_shift = 0;
     }
 }
+
+} // namespace tetris_animation
+} // namespace esphome

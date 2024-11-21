@@ -31,6 +31,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
 #define TETRIS_Y_DROP_DEFAULT 16
 #endif
 
+namespace esphome {
+namespace tetris_animation {
+
 // Type that describes the current state of a drawn number
 typedef struct
 {
@@ -81,3 +84,6 @@ class TetrisMatrixDraw
         numstate numstates[TETRIS_MAX_NUMBERS];
         int sizeOfValue;
 };
+
+} // namespace tetris_animation
+} // namespace esphome
