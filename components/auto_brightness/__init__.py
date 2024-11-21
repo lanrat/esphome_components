@@ -8,6 +8,7 @@ from esphome.const import (
     CONF_ID,
 )
 
+AUTO_BRIGHTNESS_ID = "auto_brightness_id"
 CONF_NUMBER_ID = "number_id"
 CONF_DECREASE_OFFSET = "decrease_offset"
 CONF_LEVELS = "levels"

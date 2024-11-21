@@ -7,7 +7,13 @@
 namespace esphome {
 namespace auto_brightness {
 
-// TODO expose a switch to enable/disable
+// expose a switch to enable/disable
+class AutoBrightness;
+namespace auto_brightness_switch
+{
+    class AutoBrightnessSwitch;
+    static void set_reference(AutoBrightnessSwitch *switch_, AutoBrightness *componenet);
+} // 
 
 class AutoBrightness : public Component {
     public:
@@ -20,12 +26,27 @@ class AutoBrightness : public Component {
         void set_levels(std::vector<std::array<float, 2>>);
         void set_decrease_offset(float);
 
+        void set_state(bool state);
+
+        std::vector<auto_brightness_switch::AutoBrightnessSwitch *> get_enable_switches()
+        {
+            return switches_;
+        }
+
+        void register_enable_switch(auto_brightness_switch::AutoBrightnessSwitch *component_switch)
+        {
+            switches_.push_back(component_switch);
+            set_reference(component_switch, this);
+        };
+
     protected:
+        bool enabled_ = true;
         std::map<float, float> levels;
         number::Number *number_{nullptr};
         sensor::Sensor *sensor_{nullptr};
         bool rising;
         float decrease_light_level_offset;
+        std::vector<auto_brightness_switch::AutoBrightnessSwitch *> switches_;
 
         void update_brightness(float);
 };

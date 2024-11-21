@@ -7,11 +7,19 @@ namespace auto_brightness {
 static const char *const TAG = "auto_brightness";
 
 void AutoBrightness::setup() {
-  this-> rising = true;
+  this->rising = true;
 }
 
 void AutoBrightness::set_number(number::Number *number) {
   this->number_ = number;
+}
+
+void AutoBrightness::set_state(bool state) {
+    this->enabled_ = state;
+    // if enableing, update the state with the current values
+    if (state) {
+      this->update_brightness(this->number_->state);
+    }
 }
 
 void AutoBrightness::set_decrease_offset(float offset) {
@@ -37,6 +45,9 @@ void AutoBrightness::set_levels(std::vector<std::array<float, 2>> levels) {
 }
 
 void AutoBrightness::update_brightness(float sensor_value) {
+  if (!this->enabled_) {
+    return;
+  }
   // round to 1 decimal place
   sensor_value = roundf(sensor_value * 10) / 10; 
 
@@ -59,7 +70,6 @@ void AutoBrightness::update_brightness(float sensor_value) {
 
   // set rising and update brightness level if changing
   if (new_brightness != this->number_->state) {
-  //if (new_brightness != matrix->get_initial_brightness()) {
     rising = (new_brightness > this->number_->state);
     ESP_LOGD(__func__, "light level: %.5f brightness: %.5f, rising: %d, offset: %.5f", sensor_value, new_brightness, rising, offset);
     this->number_->make_call().set_value(new_brightness).perform();
