@@ -18,7 +18,6 @@ void TetrisAnimation::setup() {
 }
 
 void TetrisAnimation::set_display(display::Display *display) {
-  this->display = display;
   this->tetris.display = display;
 }
 
@@ -47,14 +46,14 @@ void TetrisAnimation::set_time_source(time::RealTimeClock *time) {
 }
 
 void TetrisAnimation::set_scale(int scale) {
-  this->scale = scale;
+  this->tetris.scale = scale;
 }
 
 void TetrisAnimation::draw() {
-    int x_pos = (this->display->get_width() - (this->tetris.calculateWidth()*this->tetris.scale)) / 2;
+    int x_pos = (this->tetris.display->get_width() - (this->tetris.calculateWidth()*this->tetris.scale)) / 2;
     x_pos /= this->tetris.scale;
 
-    int y_pos = (this->display->get_height() + (TETRIS_Y_DROP_DEFAULT*this->tetris.scale)) / 2;
+    int y_pos = (this->tetris.display->get_height() + (TETRIS_Y_DROP_DEFAULT*this->tetris.scale)) / 2;
 
     this->tetris.drawNumbers(x_pos, y_pos, true);
 }
@@ -63,7 +62,8 @@ void TetrisAnimation::updateTime() {
     auto time = this->time_source->now();
         if (time.minute != this->last_min && time.hour != this->last_hour) {
         sprintf(this->time_buffer, "%02d:%02d", time.hour, time.minute);
-        this->tetris.scale = this->scale;  // must be called before setText, setTime or setNumbers
+        ESP_LOGD(TAG, "updating Tetris Time to: %s", this->time_buffer);
+        this->tetris.scale = this->tetris.scale;  // must be called before setText, setTime or setNumbers
         this->tetris.setTime(this->time_buffer);
         this->last_hour = time.hour;
         this->last_min = time.minute;
@@ -71,9 +71,9 @@ void TetrisAnimation::updateTime() {
 }
 
 void TetrisAnimation::dump_config() {
-  //LOG_DISPLAY("  ", "Display", this->display);
+  //LOG_DISPLAY("  ", "Display", this->tetris.display);
   //ESP_LOGCONFIG(TAG, "Time Source", this->time_source);
-  ESP_LOGCONFIG(TAG, "Scale: %d", this->scale);
+  ESP_LOGCONFIG(TAG, "Scale: %d", this->tetris.scale);
 }
 
 } // namespace tetris_animation

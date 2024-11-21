@@ -43,10 +43,10 @@ void TetrisMatrixDraw::drawChar(std::string letter, uint8_t x, uint8_t y, esphom
 // *********************************************************************
 // Draws a brick shape at a given position
 // *********************************************************************
-void TetrisMatrixDraw::drawShape(int blocktype, esphome::Color color, int x_pos, int y_pos, int num_rot)
+void TetrisMatrixDraw::drawShape(int block_type, esphome::Color color, int x_pos, int y_pos, int num_rot)
 {
   // Square
-  if (blocktype == 0)
+  if (block_type == 0)
   {
     this->display->draw_pixel_at(x_pos, y_pos, color);
     this->display->draw_pixel_at(x_pos + 1, y_pos, color);
@@ -55,7 +55,7 @@ void TetrisMatrixDraw::drawShape(int blocktype, esphome::Color color, int x_pos,
   }
 
   // L-Shape
-  if (blocktype == 1)
+  if (block_type == 1)
   {
     if (num_rot == 0)
     {
@@ -88,7 +88,7 @@ void TetrisMatrixDraw::drawShape(int blocktype, esphome::Color color, int x_pos,
   }
 
   // L-Shape (reverse)
-  if (blocktype == 2)
+  if (block_type == 2)
   {
     if (num_rot == 0)
     {
@@ -121,7 +121,7 @@ void TetrisMatrixDraw::drawShape(int blocktype, esphome::Color color, int x_pos,
   }
 
   // I-Shape
-  if (blocktype == 3)
+  if (block_type == 3)
   {
     if (num_rot == 0 || num_rot == 2)
     { // Horizontal
@@ -140,7 +140,7 @@ void TetrisMatrixDraw::drawShape(int blocktype, esphome::Color color, int x_pos,
   }
 
   // S-Shape
-  if (blocktype == 4)
+  if (block_type == 4)
   {
     if (num_rot == 0 || num_rot == 2)
     {
@@ -159,7 +159,7 @@ void TetrisMatrixDraw::drawShape(int blocktype, esphome::Color color, int x_pos,
   }
 
   // S-Shape (reversed)
-  if (blocktype == 5)
+  if (block_type == 5)
   {
     if (num_rot == 0 || num_rot == 2)
     {
@@ -178,7 +178,7 @@ void TetrisMatrixDraw::drawShape(int blocktype, esphome::Color color, int x_pos,
   }
 
   // Half cross
-  if (blocktype == 6)
+  if (block_type == 6)
   {
     if (num_rot == 0)
     {
@@ -211,7 +211,7 @@ void TetrisMatrixDraw::drawShape(int blocktype, esphome::Color color, int x_pos,
   }
 
    // Corner-Shape 
-   if (blocktype == 7)
+   if (block_type == 7)
    {
      if (num_rot == 0)
      {
@@ -247,14 +247,14 @@ void TetrisMatrixDraw::drawLargerBlock(int x_pos, int y_pos, int scale, esphome:
   }
 }
 
-void TetrisMatrixDraw::drawLargerShape(int scale, int blocktype, esphome::Color color, int x_pos, int y_pos, int num_rot)
+void TetrisMatrixDraw::drawLargerShape(int scale, int block_type, esphome::Color color, int x_pos, int y_pos, int num_rot)
 {
   int offset1 = 1 * scale;
   int offset2 = 2 * scale;
   int offset3 = 3 * scale;
 
   // Square
-  if (blocktype == 0)
+  if (block_type == 0)
   {
     this->drawLargerBlock(x_pos, y_pos, scale, color);
     this->drawLargerBlock(x_pos + offset1, y_pos, scale, color);
@@ -264,7 +264,7 @@ void TetrisMatrixDraw::drawLargerShape(int scale, int blocktype, esphome::Color 
   }
 
   // L-Shape
-  if (blocktype == 1)
+  if (block_type == 1)
   {
     if (num_rot == 0)
     {
@@ -301,7 +301,7 @@ void TetrisMatrixDraw::drawLargerShape(int scale, int blocktype, esphome::Color 
   }
 
   // L-Shape (reverse)
-  if (blocktype == 2)
+  if (block_type == 2)
   {
     if (num_rot == 0)
     {
@@ -338,7 +338,7 @@ void TetrisMatrixDraw::drawLargerShape(int scale, int blocktype, esphome::Color 
   }
 
   // I-Shape
-  if (blocktype == 3)
+  if (block_type == 3)
   {
     if (num_rot == 0 || num_rot == 2)
     { // Horizontal
@@ -359,7 +359,7 @@ void TetrisMatrixDraw::drawLargerShape(int scale, int blocktype, esphome::Color 
   }
 
   // S-Shape
-  if (blocktype == 4)
+  if (block_type == 4)
   {
     if (num_rot == 0 || num_rot == 2)
     {
@@ -380,7 +380,7 @@ void TetrisMatrixDraw::drawLargerShape(int scale, int blocktype, esphome::Color 
   }
 
   // S-Shape (reversed)
-  if (blocktype == 5)
+  if (block_type == 5)
   {
     if (num_rot == 0 || num_rot == 2)
     {
@@ -401,7 +401,7 @@ void TetrisMatrixDraw::drawLargerShape(int scale, int blocktype, esphome::Color 
   }
 
   // Half cross
-  if (blocktype == 6)
+  if (block_type == 6)
   {
     if (num_rot == 0)
     {
@@ -437,7 +437,7 @@ void TetrisMatrixDraw::drawLargerShape(int scale, int blocktype, esphome::Color 
   }
 
    // Corner-Shape 
-   if (blocktype == 7)
+   if (block_type == 7)
    {
      if (num_rot == 0)
      {
@@ -473,10 +473,10 @@ void TetrisMatrixDraw::setNumState(int index, int value, int x_shift)
 {
     if(index < TETRIS_MAX_NUMBERS) {
       ESP_LOGD(__func__, "%d", value);
-      this->numstates[index].num_to_draw = value;
-      this->numstates[index].x_shift = x_shift;
-      this->numstates[index].fallindex = 0;
-      this->numstates[index].blockindex = 0;
+      this->num_states[index].num_to_draw = value;
+      this->num_states[index].x_shift = x_shift;
+      this->num_states[index].fall_index = 0;
+      this->num_states[index].block_index = 0;
     }
 }
 
@@ -494,7 +494,7 @@ void TetrisMatrixDraw::setTime(std::string time, bool forceRefresh)
       std::string individualNumber = time.substr(pos, pos + 1);
       int number = (individualNumber != " ") ? std::stoi(individualNumber) : -1;
       // Only change the number if its different or being forced
-      if (forceRefresh || number != this->numstates[pos].num_to_draw)
+      if (forceRefresh || number != this->num_states[pos].num_to_draw)
       {
         setNumState(pos, number, xOffset);
       }
@@ -512,11 +512,11 @@ void TetrisMatrixDraw::setNumbers(int value, bool forceRefresh)
       currentXShift = TETRIS_DISTANCE_BETWEEN_DIGITS * this->scale * pos;
       int number = std::stoi(strValue.substr(pos, pos + 1));
       // Only change the number if its different or being forced
-      if (forceRefresh || number != this->numstates[pos].num_to_draw)
+      if (forceRefresh || number != this->num_states[pos].num_to_draw)
       {
         setNumState(pos, number, currentXShift);
       } else {
-        this->numstates[pos].x_shift = currentXShift;
+        this->num_states[pos].x_shift = currentXShift;
       }
     }
   } else {
@@ -532,11 +532,11 @@ void TetrisMatrixDraw::setText(std::string txt, bool forceRefresh)
     {
       currentXShift = TETRIS_DISTANCE_BETWEEN_DIGITS * this->scale * pos;
       char letter = txt.at(pos);
-      if (forceRefresh || (int)letter != this->numstates[pos].num_to_draw)
+      if (forceRefresh || (int)letter != this->num_states[pos].num_to_draw)
       {
         setNumState(pos, (int)letter, currentXShift);
       } else {
-        this->numstates[pos].x_shift = currentXShift;
+        this->num_states[pos].x_shift = currentXShift;
       }
     }
 }
@@ -553,91 +553,91 @@ bool TetrisMatrixDraw::drawText(int x, int yFinish)
   for (int numpos = 0; numpos < this->sizeOfValue; numpos++)
   {
 
-    if(numstates[numpos].num_to_draw >= 33)
+    if(num_states[numpos].num_to_draw >= 33)
     {
       // Draw falling shape
       //if (numstates[numpos].blockindex < blocksPerNumber[numstates[numpos].num_to_draw])
-      if (numstates[numpos].blockindex < blocksPerChar[numstates[numpos].num_to_draw-33])
+      if (num_states[numpos].block_index < blocksPerChar[num_states[numpos].num_to_draw-33])
       {
         finishedAnimating = false;
-        fall_instr_let current_fall = getFallinstrByAscii(numstates[numpos].num_to_draw, numstates[numpos].blockindex);
+        fall_instr_let current_fall = getFallingStrByAscii(num_states[numpos].num_to_draw, num_states[numpos].block_index);
 
         // Handle variations of rotations
         uint8_t rotations = current_fall.num_rot;
         if (rotations == 1)
         {
-          if (numstates[numpos].fallindex < (int)(current_fall.y_stop / 2))
+          if (num_states[numpos].fall_index < (int)(current_fall.y_stop / 2))
           {
             rotations = 0;
           }
         }
         if (rotations == 2)
         {
-          if (numstates[numpos].fallindex < (int)(current_fall.y_stop / 3))
+          if (num_states[numpos].fall_index < (int)(current_fall.y_stop / 3))
           {
             rotations = 0;
           }
-          if (numstates[numpos].fallindex < (int)(current_fall.y_stop / 3 * 2))
+          if (num_states[numpos].fall_index < (int)(current_fall.y_stop / 3 * 2))
           {
             rotations = 1;
           }
         }
         if (rotations == 3)
         {
-          if (numstates[numpos].fallindex < (int)(current_fall.y_stop / 4))
+          if (num_states[numpos].fall_index < (int)(current_fall.y_stop / 4))
           {
             rotations = 0;
           }
-          if (numstates[numpos].fallindex < (int)(current_fall.y_stop / 4 * 2))
+          if (num_states[numpos].fall_index < (int)(current_fall.y_stop / 4 * 2))
           {
             rotations = 1;
           }
-          if (numstates[numpos].fallindex < (int)(current_fall.y_stop / 4 * 3))
+          if (num_states[numpos].fall_index < (int)(current_fall.y_stop / 4 * 3))
           {
             rotations = 2;
           }
         }
         if(this->scale <= 1){
-          drawShape(current_fall.blocktype, 
+          drawShape(current_fall.block_type, 
                     this->tetrisColors[current_fall.color],
-                    x + current_fall.x_pos + numstates[numpos].x_shift, 
-                    y + numstates[numpos].fallindex - scaledYOffset, 
+                    x + current_fall.x_pos + num_states[numpos].x_shift, 
+                    y + num_states[numpos].fall_index - scaledYOffset, 
                     rotations);
         } else {
           drawLargerShape(this->scale, 
-                          current_fall.blocktype, 
+                          current_fall.block_type, 
                           this->tetrisColors[current_fall.color], 
-                          x + (current_fall.x_pos * this->scale) + numstates[numpos].x_shift, 
-                          y + (numstates[numpos].fallindex * scaledYOffset) - scaledYOffset, 
+                          x + (current_fall.x_pos * this->scale) + num_states[numpos].x_shift, 
+                          y + (num_states[numpos].fall_index * scaledYOffset) - scaledYOffset, 
                           rotations);
         }
         //drawShape(current_fall.blocktype, this->tetrisColors[current_fall.color], x + current_fall.x_pos + numstates[numpos].x_shift, y + numstates[numpos].fallindex - 1, rotations);
-        numstates[numpos].fallindex++;
+        num_states[numpos].fall_index++;
 
-        if (numstates[numpos].fallindex > current_fall.y_stop)
+        if (num_states[numpos].fall_index > current_fall.y_stop)
         {
-          numstates[numpos].fallindex = 0;
-          numstates[numpos].blockindex++;
+          num_states[numpos].fall_index = 0;
+          num_states[numpos].block_index++;
         }
       }
 
       // Draw already dropped shapes
-      if (numstates[numpos].blockindex > 0)
+      if (num_states[numpos].block_index > 0)
       {
-        for (int i = 0; i < numstates[numpos].blockindex; i++)
+        for (int i = 0; i < num_states[numpos].block_index; i++)
         {
-          fall_instr_let fallen_block = getFallinstrByAscii(numstates[numpos].num_to_draw, i);
+          fall_instr_let fallen_block = getFallingStrByAscii(num_states[numpos].num_to_draw, i);
           if(this->scale <= 1){
-            drawShape(fallen_block.blocktype, 
+            drawShape(fallen_block.block_type, 
                       this->tetrisColors[fallen_block.color], 
-                      x + fallen_block.x_pos + numstates[numpos].x_shift, 
+                      x + fallen_block.x_pos + num_states[numpos].x_shift, 
                       y + fallen_block.y_stop - 1, 
                       fallen_block.num_rot);
           } else {
             drawLargerShape(this->scale, 
-                            fallen_block.blocktype, 
+                            fallen_block.block_type, 
                             this->tetrisColors[fallen_block.color], 
-                            x + (fallen_block.x_pos * this->scale) + numstates[numpos].x_shift, 
+                            x + (fallen_block.x_pos * this->scale) + num_states[numpos].x_shift, 
                             y + (fallen_block.y_stop * scaledYOffset) - scaledYOffset, 
                             fallen_block.num_rot);
           }
@@ -660,90 +660,90 @@ bool TetrisMatrixDraw::drawNumbers(int x, int yFinish, bool displayColon)
 
   for (int numpos = 0; numpos < this->sizeOfValue; numpos++)
   {
-    if(numstates[numpos].num_to_draw >= 0) 
+    if(num_states[numpos].num_to_draw >= 0) 
     {
       // Draw falling shape
-      if (numstates[numpos].blockindex < blocksPerNumber[numstates[numpos].num_to_draw])
+      if (num_states[numpos].block_index < blocksPerNumber[num_states[numpos].num_to_draw])
       {
         finishedAnimating = false;
-        fall_instr current_fall = getFallinstrByNum(numstates[numpos].num_to_draw, numstates[numpos].blockindex);
+        fall_instr current_fall = getFallingStrByNum(num_states[numpos].num_to_draw, num_states[numpos].block_index);
 
         // Handle variations of rotations
         uint8_t rotations = current_fall.num_rot;
         if (rotations == 1)
         {
-          if (numstates[numpos].fallindex < (int)(current_fall.y_stop / 2))
+          if (num_states[numpos].fall_index < (int)(current_fall.y_stop / 2))
           {
             rotations = 0;
           }
         }
         if (rotations == 2)
         {
-          if (numstates[numpos].fallindex < (int)(current_fall.y_stop / 3))
+          if (num_states[numpos].fall_index < (int)(current_fall.y_stop / 3))
           {
             rotations = 0;
           }
-          if (numstates[numpos].fallindex < (int)(current_fall.y_stop / 3 * 2))
+          if (num_states[numpos].fall_index < (int)(current_fall.y_stop / 3 * 2))
           {
             rotations = 1;
           }
         }
         if (rotations == 3)
         {
-          if (numstates[numpos].fallindex < (int)(current_fall.y_stop / 4))
+          if (num_states[numpos].fall_index < (int)(current_fall.y_stop / 4))
           {
             rotations = 0;
           }
-          if (numstates[numpos].fallindex < (int)(current_fall.y_stop / 4 * 2))
+          if (num_states[numpos].fall_index < (int)(current_fall.y_stop / 4 * 2))
           {
             rotations = 1;
           }
-          if (numstates[numpos].fallindex < (int)(current_fall.y_stop / 4 * 3))
+          if (num_states[numpos].fall_index < (int)(current_fall.y_stop / 4 * 3))
           {
             rotations = 2;
           }
         }
 
         if(this->scale <= 1){
-          drawShape(current_fall.blocktype, 
+          drawShape(current_fall.block_type, 
                     this->tetrisColors[current_fall.color],
-                    x + current_fall.x_pos + numstates[numpos].x_shift, 
-                    y + numstates[numpos].fallindex - scaledYOffset, 
+                    x + current_fall.x_pos + num_states[numpos].x_shift, 
+                    y + num_states[numpos].fall_index - scaledYOffset, 
                     rotations);
         } else {
           drawLargerShape(this->scale, 
-                          current_fall.blocktype, 
+                          current_fall.block_type, 
                           this->tetrisColors[current_fall.color], 
-                          x + (current_fall.x_pos * this->scale) + numstates[numpos].x_shift, 
-                          y + (numstates[numpos].fallindex * scaledYOffset) - scaledYOffset, 
+                          x + (current_fall.x_pos * this->scale) + num_states[numpos].x_shift, 
+                          y + (num_states[numpos].fall_index * scaledYOffset) - scaledYOffset, 
                           rotations);
         }
-        numstates[numpos].fallindex++;
+        num_states[numpos].fall_index++;
 
-        if (numstates[numpos].fallindex > current_fall.y_stop)
+        if (num_states[numpos].fall_index > current_fall.y_stop)
         {
-          numstates[numpos].fallindex = 0;
-          numstates[numpos].blockindex++;
+          num_states[numpos].fall_index = 0;
+          num_states[numpos].block_index++;
         }
       }
 
       // Draw already dropped shapes
-      if (numstates[numpos].blockindex > 0)
+      if (num_states[numpos].block_index > 0)
       {
-        for (int i = 0; i < numstates[numpos].blockindex; i++)
+        for (int i = 0; i < num_states[numpos].block_index; i++)
         {
-          fall_instr fallen_block = getFallinstrByNum(numstates[numpos].num_to_draw, i);
+          fall_instr fallen_block = getFallingStrByNum(num_states[numpos].num_to_draw, i);
           if(this->scale <= 1){
-            drawShape(fallen_block.blocktype, 
+            drawShape(fallen_block.block_type, 
                       this->tetrisColors[fallen_block.color], 
-                      x + fallen_block.x_pos + numstates[numpos].x_shift, 
+                      x + fallen_block.x_pos + num_states[numpos].x_shift, 
                       y + fallen_block.y_stop - 1, 
                       fallen_block.num_rot);
           } else {
             drawLargerShape(this->scale, 
-                            fallen_block.blocktype, 
+                            fallen_block.block_type, 
                             this->tetrisColors[fallen_block.color], 
-                            x + (fallen_block.x_pos * this->scale) + numstates[numpos].x_shift, 
+                            x + (fallen_block.x_pos * this->scale) + num_states[numpos].x_shift, 
                             y + (fallen_block.y_stop * scaledYOffset) - scaledYOffset, 
                             fallen_block.num_rot);
           }
@@ -772,10 +772,10 @@ int TetrisMatrixDraw::calculateWidth(){
 
 void TetrisMatrixDraw::resetNumStates(){
     for(int i = 0; i < TETRIS_MAX_NUMBERS; i++){
-        this->numstates[i].num_to_draw = -1;
-        this->numstates[i].fallindex = 0;
-        this->numstates[i].blockindex = 0;
-        this->numstates[i].x_shift = 0;
+        this->num_states[i].num_to_draw = -1;
+        this->num_states[i].fall_index = 0;
+        this->num_states[i].block_index = 0;
+        this->num_states[i].x_shift = 0;
     }
 }
 

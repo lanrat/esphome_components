@@ -23,9 +23,7 @@ class TetrisAnimation : public Component {
     protected:
         void updateTime();
         TetrisMatrixDraw tetris;
-        int scale;
         time::RealTimeClock *time_source;
-        display::Display *display;
         char time_buffer[10];
         uint8_t last_hour, last_min;
 };

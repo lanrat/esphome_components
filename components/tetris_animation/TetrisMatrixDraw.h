@@ -34,10 +34,10 @@ namespace esphome {
 namespace tetris_animation {
 
 // Type that describes the current state of a drawn number
-struct numstate {
+struct num_state {
   int num_to_draw; // Number to draw (0-9)
-  int blockindex;  // The index of the brick (as defined in the falling instructions) that is currently falling
-  int fallindex;   // y-position of the brick it already has (incrementing with each step)
+  int block_index;  // The index of the brick (as defined in the falling instructions) that is currently falling
+  int fall_index;   // y-position of the brick it already has (incrementing with each step)
   int x_shift;     // x-position of the number relative to the matrix where the number should be placed.
 };
 
@@ -60,8 +60,8 @@ class TetrisMatrixDraw
         bool drawNumbers(int x = 0, int y = 0, bool displayColon = false);
         bool drawText(int x = 0, int y = 0);
         void drawChar(std::string letter, uint8_t x, uint8_t y, esphome::Color color, esphome::display::BaseFont *font);
-        void drawShape(int blocktype, esphome::Color color, int x_pos, int y_pos, int num_rot);
-        void drawLargerShape(int scale, int blocktype, esphome::Color color, int x_pos, int y_pos, int num_rot);
+        void drawShape(int block_type, esphome::Color color, int x_pos, int y_pos, int num_rot);
+        void drawLargerShape(int scale, int block_type, esphome::Color color, int x_pos, int y_pos, int num_rot);
         void setTime(std::string time, bool forceRefresh = false);
         void setNumbers(int value, bool forceRefresh = false);
         void setText(std::string txt, bool forceRefresh = false);
@@ -78,10 +78,9 @@ class TetrisMatrixDraw
         esphome::display::Display  *display;
 
     private:
-        //voidinitialiseeColors();
         void resetNumStates();
         void drawLargerBlock(int x_pos, int y_pos, int scale, esphome::Color color);
-        numstate numstates[TETRIS_MAX_NUMBERS];
+        num_state num_states[TETRIS_MAX_NUMBERS];
         int sizeOfValue;
 };
 

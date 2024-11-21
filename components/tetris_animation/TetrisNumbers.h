@@ -8,7 +8,7 @@ namespace tetris_animation {
 
 // Type that describes how a brick is falling down
 struct fall_instr {
-  int blocktype;  // Number of the block type
+  int block_type;  // Number of the block type
   int color; // Color of the brick
   int x_pos;      // x-position (starting from the left number staring point) where the brick should be placed
   int y_stop;     // y-position (1-16, where 16 is the last line of the matrix) where the brick should stop falling
@@ -189,47 +189,47 @@ static const int blocksPerNumber[10] = {SIZE_NUM_0, SIZE_NUM_1, SIZE_NUM_2, SIZE
 // *********************************************************************
 // Helper function that that return the falling instruction for a given number
 // *********************************************************************
-static const fall_instr getFallinstrByNum(int num, int blockindex)
+static const fall_instr getFallingStrByNum(int num, int block_index)
 {
   if (num == 0)
   {
-    return num_0[blockindex];
+    return num_0[block_index];
   }
   if (num == 1)
   {
-    return num_1[blockindex];
+    return num_1[block_index];
   }
   if (num == 2)
   {
-    return num_2[blockindex];
+    return num_2[block_index];
   }
   if (num == 3)
   {
-    return num_3[blockindex];
+    return num_3[block_index];
   }
   if (num == 4)
   {
-    return num_4[blockindex];
+    return num_4[block_index];
   }
   if (num == 5)
   {
-    return num_5[blockindex];
+    return num_5[block_index];
   }
   if (num == 6)
   {
-    return num_6[blockindex];
+    return num_6[block_index];
   }
   if (num == 7)
   {
-    return num_7[blockindex];
+    return num_7[block_index];
   }
   if (num == 8)
   {
-    return num_8[blockindex];
+    return num_8[block_index];
   }
 
   // implicit return
-  return num_9[blockindex];
+  return num_9[block_index];
 }
 
 } // namespace tetris_animation

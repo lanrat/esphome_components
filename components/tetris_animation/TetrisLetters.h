@@ -12,8 +12,8 @@ namespace tetris_animation {
 // *********************************************************************
 
 // Type that describes how a brick is falling down
-struct fall_instr_let {
-  int blocktype;  // Number of the block type
+struct fall_instr_let{
+  int block_type;  // Number of the block type
   int color; // Color of the brick
   int x_pos;      // x-position (starting from the left number staring point) where the brick should be placed
   int y_stop;     // y-position (1-16, where 16 is the last line of the matrix) where the brick should stop falling
@@ -853,183 +853,183 @@ static const fall_instr_let a90[9] = {
                                    // ! " # $ % & ' ( ) * + , - . / 0  1 2 3 4 5  6  7 8 9 : ; < = > ? @ A B C D E F G H I J K L M N O P Q R S T U  V W X Y Z
 static const int blocksPerChar[64] = {5,4,9,8,7,8,2,4,4,6,5,2,3,1,5,10,8,9,9,8,10,10,6,8,7,2,3,5,4,5,6,8,9,9,8,9,9,7,8,9,8,7,9,6,9,9,9,8,9,9,9,6,9,10,8,7,7,9};
 
-static const fall_instr_let getFallinstrByAscii(int num, int blockindex)
+static const fall_instr_let getFallingStrByAscii(int num, int block_index)
 {
   switch (num) {
     case 33:
-        return a33[blockindex];
+        return a33[block_index];
         break;
     case 34:
-        return a34[blockindex];
+        return a34[block_index];
         break;
     case 35:
-        return a35[blockindex];
+        return a35[block_index];
         break;
     case 36:
-        return a36[blockindex];
+        return a36[block_index];
         break;
     case 37:
-        return a37[blockindex];
+        return a37[block_index];
         break;
     case 38:
-        return a38[blockindex];
+        return a38[block_index];
         break;
     case 39:
-        return a39[blockindex];
+        return a39[block_index];
         break;
     case 40:
-        return a40[blockindex];
+        return a40[block_index];
         break;
     case 41:
-        return a41[blockindex];
+        return a41[block_index];
         break;
     case 42:
-        return a42[blockindex];
+        return a42[block_index];
         break;
     case 43:
-        return a43[blockindex];
+        return a43[block_index];
         break;
     case 44:
-        return a44[blockindex];
+        return a44[block_index];
         break;
     case 45:
-        return a45[blockindex];
+        return a45[block_index];
         break;
     case 46:
-        return a46[blockindex];
+        return a46[block_index];
         break;
     case 47:
-        return a47[blockindex];
+        return a47[block_index];
         break;  
     case 48:
-        return a48[blockindex];
+        return a48[block_index];
         break;  
     case 49:
-        return a49[blockindex];
+        return a49[block_index];
         break;
     case 50:
-        return a50[blockindex];
+        return a50[block_index];
         break;
     case 51:
-        return a51[blockindex];
+        return a51[block_index];
         break;
     case 52:
-        return a52[blockindex];
+        return a52[block_index];
         break;
     case 53:
-        return a53[blockindex];
+        return a53[block_index];
         break;
     case 54:
-        return a54[blockindex];
+        return a54[block_index];
         break;
     case 55:
-        return a55[blockindex];
+        return a55[block_index];
         break;
     case 56:
-        return a56[blockindex];
+        return a56[block_index];
         break;
     case 57:
-        return a57[blockindex];
+        return a57[block_index];
         break;
     case 58:
-        return a58[blockindex];
+        return a58[block_index];
         break;
     case 59:
-        return a59[blockindex];
+        return a59[block_index];
         break;
     case 60:
-        return a60[blockindex];
+        return a60[block_index];
         break;
     case 61:
-        return a61[blockindex];
+        return a61[block_index];
         break;
     case 62:
-        return a62[blockindex];
+        return a62[block_index];
         break;
     case 63:
-        return a63[blockindex];
+        return a63[block_index];
         break;
     case 64:
-        return a64[blockindex];
+        return a64[block_index];
         break;
     case 65:
-        return a65[blockindex];
+        return a65[block_index];
         break;
     case 66:
-        return a66[blockindex];
+        return a66[block_index];
         break;
     case 67:
-        return a67[blockindex];
+        return a67[block_index];
         break;
     case 68:
-        return a68[blockindex];
+        return a68[block_index];
         break;
     case 69:
-        return a69[blockindex];
+        return a69[block_index];
         break;
     case 70:
-        return a70[blockindex];
+        return a70[block_index];
         break;
     case 71:
-        return a71[blockindex];
+        return a71[block_index];
         break;
     case 72:
-        return a72[blockindex];
+        return a72[block_index];
         break;
     case 73:
-        return a73[blockindex];
+        return a73[block_index];
         break;
     case 74:
-        return a74[blockindex];
+        return a74[block_index];
         break;
     case 75:
-        return a75[blockindex];
+        return a75[block_index];
         break;
     case 76:
-        return a76[blockindex];
+        return a76[block_index];
         break;
     case 77:
-        return a77[blockindex];
+        return a77[block_index];
         break;
     case 78:
-        return a78[blockindex];
+        return a78[block_index];
         break;
     case 79:
-        return a79[blockindex];
+        return a79[block_index];
         break;
     case 80:
-        return a80[blockindex];
+        return a80[block_index];
         break;
     case 81:
-        return a81[blockindex];
+        return a81[block_index];
         break;
     case 82:
-        return a82[blockindex];
+        return a82[block_index];
         break;
     case 83:
-        return a83[blockindex];
+        return a83[block_index];
         break;
     case 84:
-        return a84[blockindex];
+        return a84[block_index];
         break;
     case 85:
-        return a85[blockindex];
+        return a85[block_index];
         break;
     case 86:
-        return a86[blockindex];
+        return a86[block_index];
         break;
     case 87:
-        return a87[blockindex];
+        return a87[block_index];
         break;
     case 88:
-        return a88[blockindex];
+        return a88[block_index];
         break;
     case 89:
-        return a89[blockindex];
+        return a89[block_index];
         break;
     case 90:
     default:
-        return a90[blockindex];
+        return a90[block_index];
   }    
 }
 
