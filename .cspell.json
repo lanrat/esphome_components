@@ -4,13 +4,17 @@
     "dictionaryDefinitions": [],
     "dictionaries": [],
     "words": [
+        "codegen",
         "CODEOWNERS",
+        "disp",
         "dles",
         "esphome",
+        "lanrat",
         "LOGCONFIG",
         "LOGD",
         "LOGI",
         "LOGW",
+        "Pvariable",
         "Tetris"
     ],
     "ignoreWords": [],
