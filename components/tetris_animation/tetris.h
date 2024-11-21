@@ -21,9 +21,10 @@ class TetrisAnimation : public Component {
         void set_time_source(time::RealTimeClock *);
 
         void draw();
+        void reset();
     
     protected:
-        void updateTime();
+        void updateTime(bool forceRefresh = false);
         TetrisMatrixDraw tetris_;
         time::RealTimeClock *rtc_;
         char time_buffer_[10];

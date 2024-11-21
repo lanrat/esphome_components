@@ -8,7 +8,7 @@ namespace tetris_animation {
 static const char *const TAG = "tetris_animation";
 
 void TetrisAnimation::setup() {
-  this->last_hour_ = 99; // makes the first time invalid
+  this->reset();
 }
 
 void TetrisAnimation::set_display(display::Display *display) {
@@ -28,6 +28,11 @@ void TetrisAnimation::loop() {
   this->updateTime();
 }
 
+void TetrisAnimation::reset() {
+    this->last_hour_ = 99; // makes the first time invalid
+    this->updateTime(true);
+}
+
 void TetrisAnimation::set_scale(int scale) {
   this->tetris_.scale = scale;
 }
@@ -41,13 +46,13 @@ void TetrisAnimation::draw() {
   this->tetris_.drawNumbers(x_pos, y_pos, true);
 }
 
-void TetrisAnimation::updateTime() {
+void TetrisAnimation::updateTime(bool force_refresh) {
   auto time = this->rtc_->now();
   if (!time.is_valid()) return;
   if (time.minute != this->last_min_ || time.hour != this->last_hour_) {
     sprintf(this->time_buffer_, "%02d:%02d", time.hour, time.minute);
     ESP_LOGD(TAG, "updating Tetris Time to: %s", this->time_buffer_);
-    this->tetris_.setTime(this->time_buffer_);
+    this->tetris_.setTime(this->time_buffer_, force_refresh);
     this->last_hour_ = time.hour;
     this->last_min_ = time.minute;
   }
