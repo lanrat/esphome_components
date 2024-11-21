@@ -6,9 +6,16 @@ namespace auto_brightness {
 
 static const char *const TAG = "auto_brightness";
 
-
 void AutoBrightness::setup() {
-    this-> rising = true;
+  this-> rising = true;
+}
+
+void AutoBrightness::set_number(number::Number *number) {
+  this->number_ = number;
+}
+
+void AutoBrightness::set_decrease_offset(float offset) {
+  this->decrease_light_level_offset = offset;
 }
 
 void AutoBrightness::set_sensor(sensor::Sensor *sensor) {
@@ -22,46 +29,41 @@ void AutoBrightness::set_sensor(sensor::Sensor *sensor) {
   });
 }
 
-void AutoBrightness::set_number(number::Number *number) {
-  this->number_ = number;
-}
-
-void AutoBrightness::set_decrease_offset(float offset) {
-  this->decrease_light_level_offset = offset;
-}
-
 void AutoBrightness::set_levels(std::vector<std::array<float, 2>> levels) {
-    // convert vector or array to map
-    for (const auto level : levels) {
-        this->levels[level[0]] = level[1];
-    }
+  // convert vector or array to map
+  for (const auto level : levels) {
+    this->levels[level[0]] = level[1];
+  }
 }
 
 void AutoBrightness::update_brightness(float sensor_value) {
-   // adjust the offset if we are decreasing
-    float offset = 0;
-    if (!this->rising) {
-        offset = this->decrease_light_level_offset;
-    }
+  // round to 1 decimal place
+  sensor_value = roundf(sensor_value * 10) / 10; 
 
-    // find the first matching brightness level in the map
-    auto level = this->levels.lower_bound(sensor_value-offset);
+  // adjust the offset if we are decreasing
+  float offset = 0;
+  if (!this->rising) {
+    offset = this->decrease_light_level_offset;
+  }
 
-    // if not found, decrease iterator to be the highest
-    if (level == this->levels.end()) {
-        // brightness larger than max value, use highest value.
-        level--;
-    }
+  // find the first matching brightness level in the map
+  auto level = this->levels.lower_bound(sensor_value-offset);
 
-    float new_brightness = level->second;
+  // if not found, decrease iterator to be the highest
+  if (level == this->levels.end()) {
+    // brightness larger than max value, use highest value.
+    level--;
+  }
 
-    // set rising and update brightness level if changing
-    if (new_brightness != sensor_value) {
-    //if (new_brightness != matrix->get_initial_brightness()) {
-        rising = (new_brightness > this->number_->state);
-        ESP_LOGD(__func__, "light level: %.5f brightness: %.5f, rising: %d, offset: %.5f", sensor_value, new_brightness, rising, offset);
-        this->number_->make_call().set_value(new_brightness).perform();
-    }
+  float new_brightness = level->second;
+
+  // set rising and update brightness level if changing
+  if (new_brightness != this->number_->state) {
+  //if (new_brightness != matrix->get_initial_brightness()) {
+    rising = (new_brightness > this->number_->state);
+    ESP_LOGD(__func__, "light level: %.5f brightness: %.5f, rising: %d, offset: %.5f", sensor_value, new_brightness, rising, offset);
+    this->number_->make_call().set_value(new_brightness).perform();
+  }
 }
 
 void AutoBrightness::dump_config() {
