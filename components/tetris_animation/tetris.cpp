@@ -13,7 +13,7 @@ static const char *const TAG = "tetris_animation";
 
 
 void TetrisAnimation::setup() {
-    this->tetris = TetrisMatrixDraw(this->display);
+    //this->tetris = TetrisMatrixDraw(this->display);
     this->last_hour = 99; // makes the first time invalid
 }
 
@@ -70,10 +70,9 @@ void TetrisAnimation::updateTime() {
 }
 
 void TetrisAnimation::dump_config() {
-  LOG_DISPLAY(TAG, "Display", this->display);
-  ESP_LOGCONFIG(TAG, "Time Source", this->time_source);
-  ESP_LOGCONFIG(TAG, "Scale", this->scale);
-  ESP_LOGCONFIG(TAG, "Decrease Offset", this->decrease_light_level_offset);
+  //LOG_DISPLAY("  ", "Display", this->display);
+  //ESP_LOGCONFIG(TAG, "Time Source", this->time_source);
+  ESP_LOGCONFIG(TAG, "Scale: %d", this->scale);
 }
 
 } // namespace tetris_animation

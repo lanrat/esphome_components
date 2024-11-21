@@ -17,7 +17,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
 */
 #pragma once
 
-
 #include "esphome/components/display/display.h"
 #include "esphome/core/color.h"
 
@@ -35,13 +34,12 @@ namespace esphome {
 namespace tetris_animation {
 
 // Type that describes the current state of a drawn number
-typedef struct
-{
+struct numstate {
   int num_to_draw; // Number to draw (0-9)
   int blockindex;  // The index of the brick (as defined in the falling instructions) that is currently falling
   int fallindex;   // y-position of the brick it already has (incrementing with each step)
   int x_shift;     // x-position of the number relative to the matrix where the number should be placed.
-} numstate;
+};
 
 // default colors
 static const esphome::Color tetrisRED = esphome::Color(255, 0, 0);
@@ -57,7 +55,8 @@ static const esphome::Color tetrisBLACK = esphome::Color(0, 0, 0);
 class TetrisMatrixDraw
 {
     public:
-        TetrisMatrixDraw (esphome::display::Display *display);
+        TetrisMatrixDraw(esphome::display::Display *display);
+        TetrisMatrixDraw();
         bool drawNumbers(int x = 0, int y = 0, bool displayColon = false);
         bool drawText(int x = 0, int y = 0);
         void drawChar(std::string letter, uint8_t x, uint8_t y, esphome::Color color, esphome::display::BaseFont *font);
@@ -76,9 +75,10 @@ class TetrisMatrixDraw
 
         esphome::Color tetrisColors[9] = {tetrisRED, tetrisGREEN, tetrisBLUE, tetrisWHITE, tetrisYELLOW, tetrisCYAN, tetrisMAGENTA, tetrisORANGE, tetrisBLACK};
 
-    private:
         esphome::display::Display  *display;
-        void intialiseColors();
+
+    private:
+        //voidinitialiseeColors();
         void resetNumStates();
         void drawLargerBlock(int x_pos, int y_pos, int scale, esphome::Color color);
         numstate numstates[TETRIS_MAX_NUMBERS];

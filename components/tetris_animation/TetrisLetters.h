@@ -4,19 +4,21 @@ Github: n00dles101
 */
 #pragma once
 
+namespace esphome {
+namespace tetris_animation {
+
 // *********************************************************************
 // Types and data that describes how numbers are drawn
 // *********************************************************************
 
 // Type that describes how a brick is falling down
-typedef struct
-{
+struct fall_instr_let {
   int blocktype;  // Number of the block type
   int color; // Color of the brick
   int x_pos;      // x-position (starting from the left number staring point) where the brick should be placed
   int y_stop;     // y-position (1-16, where 16 is the last line of the matrix) where the brick should stop falling
   int num_rot;    // Number of 90-degree (clockwise) rotations a brick is turned from the standard position
-} fall_instr_let;
+} ;
 
 //
 // ASCII characters
@@ -1031,28 +1033,5 @@ static const fall_instr_let getFallinstrByAscii(int num, int blockindex)
   }    
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+} // namespace tetris_animation
+} // namespace esphome

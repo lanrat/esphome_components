@@ -17,18 +17,21 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
 */
 
 #include "TetrisMatrixDraw.h"
+#include "TetrisNumbers.h"
+#include "TetrisLetters.h"
 
 // // this lets esphome logging functions work here
-// using esphome::esp_log_printf_;
+using esphome::esp_log_printf_;
 
 namespace esphome {
 namespace tetris_animation {
 
-#include "TetrisNumbers.h"
-#include "TetrisLetters.h"
-
 TetrisMatrixDraw::TetrisMatrixDraw(esphome::display::Display *display)	{
     this->display = display;
+    TetrisMatrixDraw();
+}
+
+TetrisMatrixDraw::TetrisMatrixDraw()	{
     resetNumStates();
 }
 
