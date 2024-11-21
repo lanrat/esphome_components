@@ -20,11 +20,13 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
 #include "TetrisNumbers.h"
 #include "TetrisLetters.h"
 
-// // this lets esphome logging functions work here
+// this lets esphome logging functions work here
 using esphome::esp_log_printf_;
 
 namespace esphome {
 namespace tetris_animation {
+
+static const char *const TAG = "TetrisMatrixDraw";
 
 TetrisMatrixDraw::TetrisMatrixDraw(esphome::display::Display *display)	{
     this->display = display;
@@ -472,7 +474,7 @@ void TetrisMatrixDraw::drawLargerShape(int scale, int block_type, esphome::Color
 void TetrisMatrixDraw::setNumState(int index, int value, int x_shift)
 {
     if(index < TETRIS_MAX_NUMBERS) {
-      ESP_LOGD(__func__, "%d", value);
+      //ESP_LOGD(TAG, "setNumState: %d", value);
       this->num_states[index].num_to_draw = value;
       this->num_states[index].x_shift = x_shift;
       this->num_states[index].fall_index = 0;
@@ -485,14 +487,16 @@ void TetrisMatrixDraw::setTime(std::string time, bool forceRefresh)
     this->sizeOfValue = 4;
     // remove all ':' from string
     time.erase(std::remove(time.begin(), time.end(), ':'), time.end());
+    ESP_LOGD(TAG, "setTime str: '%s'", time.c_str());
     for (uint8_t pos = 0; pos < 4; pos++)
     {
       int xOffset = pos * TETRIS_DISTANCE_BETWEEN_DIGITS * this->scale;
       if(pos >= 2){
         xOffset += (3 * this->scale);
       }
-      std::string individualNumber = time.substr(pos, pos + 1);
+      std::string individualNumber = time.substr(pos, 1);
       int number = (individualNumber != " ") ? std::stoi(individualNumber) : -1;
+      //ESP_LOGD(TAG, "setTime num: '%s' -> int %d", individualNumber.c_str(), number);
       // Only change the number if its different or being forced
       if (forceRefresh || number != this->num_states[pos].num_to_draw)
       {
@@ -520,7 +524,7 @@ void TetrisMatrixDraw::setNumbers(int value, bool forceRefresh)
       }
     }
   } else {
-    ESP_LOGE(__func__, "Number too long: %d > %d", value, TETRIS_MAX_NUMBERS);
+    ESP_LOGE(TAG, "Number too long: %d > %d", value, TETRIS_MAX_NUMBERS);
   }
 }
 

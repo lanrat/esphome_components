@@ -1,10 +1,6 @@
 #include "tetris.h"
-#include "esphome/components/time/automation.h"
 #include "esphome/core/application.h"
 #include "esphome/core/log.h"
-
-#include "esphome/core/base_automation.h"
-
 
 namespace esphome {
 namespace tetris_animation {
@@ -12,66 +8,55 @@ namespace tetris_animation {
 static const char *const TAG = "tetris_animation";
 
 void TetrisAnimation::setup() {
-  this->last_hour = 99; // makes the first time invalid
+  this->last_hour_ = 99; // makes the first time invalid
 }
 
 void TetrisAnimation::set_display(display::Display *display) {
-  this->tetris.display = display;
+  this->tetris_.display = display;
 }
 
 void TetrisAnimation::set_time_source(time::RealTimeClock *time) {
-  this->time_source = time;
+  this->rtc_ = time;
 
   time->add_on_time_sync_callback([this]() {
     ESP_LOGD(TAG, "updating Tetris Time from first time sync");
     this->updateTime();
   });
+}
 
-  // TODO apparently its more efficient to just loop and check that seconds == 0.
-  
-  // create cron to fire every minute.
-  auto cron_trigger = new time::CronTrigger(time);
-  cron_trigger->add_second(0); // fire at the 0th second
-
-
-  App.register_component(cron_trigger);
-  auto lambda_action = new LambdaAction<>([=]() -> void {
-    ESP_LOGD(TAG, "updating Tetris Time from Cron");
-    this->updateTime();
-  });
-  auto automation = new Automation<>(cron_trigger);
-  automation->add_actions({lambda_action});
+void TetrisAnimation::loop() {
+  this->updateTime();
 }
 
 void TetrisAnimation::set_scale(int scale) {
-  this->tetris.scale = scale;
+  this->tetris_.scale = scale;
 }
 
 void TetrisAnimation::draw() {
-  int x_pos = (this->tetris.display->get_width() - (this->tetris.calculateWidth()*this->tetris.scale)) / 2;
-  x_pos /= this->tetris.scale;
+  int x_pos = (this->tetris_.display->get_width() - (this->tetris_.calculateWidth()*this->tetris_.scale)) / 2;
+  x_pos /= this->tetris_.scale;
 
-  int y_pos = (this->tetris.display->get_height() + (TETRIS_Y_DROP_DEFAULT*this->tetris.scale)) / 2;
+  int y_pos = (this->tetris_.display->get_height() + (TETRIS_Y_DROP_DEFAULT*this->tetris_.scale)) / 2;
 
-  this->tetris.drawNumbers(x_pos, y_pos, true);
+  this->tetris_.drawNumbers(x_pos, y_pos, true);
 }
 
 void TetrisAnimation::updateTime() {
-  auto time = this->time_source->now();
-  if (time.minute != this->last_min && time.hour != this->last_hour) {
-    sprintf(this->time_buffer, "%02d:%02d", time.hour, time.minute);
-    ESP_LOGD(TAG, "updating Tetris Time to: %s", this->time_buffer);
-    this->tetris.scale = this->tetris.scale;  // must be called before setText, setTime or setNumbers
-    this->tetris.setTime(this->time_buffer);
-    this->last_hour = time.hour;
-    this->last_min = time.minute;
+  auto time = this->rtc_->now();
+  if (!time.is_valid()) return;
+  if (time.minute != this->last_min_ || time.hour != this->last_hour_) {
+    sprintf(this->time_buffer_, "%02d:%02d", time.hour, time.minute);
+    ESP_LOGD(TAG, "updating Tetris Time to: %s", this->time_buffer_);
+    this->tetris_.setTime(this->time_buffer_);
+    this->last_hour_ = time.hour;
+    this->last_min_ = time.minute;
   }
 }
 
 void TetrisAnimation::dump_config() {
   //LOG_DISPLAY("  ", "Display", this->tetris.display);
   //ESP_LOGCONFIG(TAG, "Time Source", this->time_source);
-  ESP_LOGCONFIG(TAG, "Scale: %d", this->tetris.scale);
+  ESP_LOGCONFIG(TAG, "Scale: %d", this->tetris_.scale);
 }
 
 } // namespace tetris_animation

@@ -4,6 +4,7 @@
 #include "TetrisMatrixDraw.h"
 
 // TODO adjust speed
+// TODO force reset
 
 namespace esphome {
 namespace tetris_animation {
@@ -12,6 +13,7 @@ class TetrisAnimation : public Component {
     public:
         void dump_config() override;
         void setup() override;
+        void loop() override;
         float get_setup_priority() const override { return setup_priority::PROCESSOR; }
 
         void set_display(display::Display *);
@@ -22,10 +24,10 @@ class TetrisAnimation : public Component {
     
     protected:
         void updateTime();
-        TetrisMatrixDraw tetris;
-        time::RealTimeClock *time_source;
-        char time_buffer[10];
-        uint8_t last_hour, last_min;
+        TetrisMatrixDraw tetris_;
+        time::RealTimeClock *rtc_;
+        char time_buffer_[10];
+        uint8_t last_hour_, last_min_;
 };
 
 } // namespace tetris_animation
