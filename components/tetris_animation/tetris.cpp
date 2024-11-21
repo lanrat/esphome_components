@@ -11,10 +11,8 @@ namespace tetris_animation {
 
 static const char *const TAG = "tetris_animation";
 
-
 void TetrisAnimation::setup() {
-    //this->tetris = TetrisMatrixDraw(this->display);
-    this->last_hour = 99; // makes the first time invalid
+  this->last_hour = 99; // makes the first time invalid
 }
 
 void TetrisAnimation::set_display(display::Display *display) {
@@ -50,24 +48,24 @@ void TetrisAnimation::set_scale(int scale) {
 }
 
 void TetrisAnimation::draw() {
-    int x_pos = (this->tetris.display->get_width() - (this->tetris.calculateWidth()*this->tetris.scale)) / 2;
-    x_pos /= this->tetris.scale;
+  int x_pos = (this->tetris.display->get_width() - (this->tetris.calculateWidth()*this->tetris.scale)) / 2;
+  x_pos /= this->tetris.scale;
 
-    int y_pos = (this->tetris.display->get_height() + (TETRIS_Y_DROP_DEFAULT*this->tetris.scale)) / 2;
+  int y_pos = (this->tetris.display->get_height() + (TETRIS_Y_DROP_DEFAULT*this->tetris.scale)) / 2;
 
-    this->tetris.drawNumbers(x_pos, y_pos, true);
+  this->tetris.drawNumbers(x_pos, y_pos, true);
 }
 
 void TetrisAnimation::updateTime() {
-    auto time = this->time_source->now();
-        if (time.minute != this->last_min && time.hour != this->last_hour) {
-        sprintf(this->time_buffer, "%02d:%02d", time.hour, time.minute);
-        ESP_LOGD(TAG, "updating Tetris Time to: %s", this->time_buffer);
-        this->tetris.scale = this->tetris.scale;  // must be called before setText, setTime or setNumbers
-        this->tetris.setTime(this->time_buffer);
-        this->last_hour = time.hour;
-        this->last_min = time.minute;
-    }
+  auto time = this->time_source->now();
+  if (time.minute != this->last_min && time.hour != this->last_hour) {
+    sprintf(this->time_buffer, "%02d:%02d", time.hour, time.minute);
+    ESP_LOGD(TAG, "updating Tetris Time to: %s", this->time_buffer);
+    this->tetris.scale = this->tetris.scale;  // must be called before setText, setTime or setNumbers
+    this->tetris.setTime(this->time_buffer);
+    this->last_hour = time.hour;
+    this->last_min = time.minute;
+  }
 }
 
 void TetrisAnimation::dump_config() {
