@@ -27,7 +27,6 @@ enum SampleRate {
   SAMPLE_RATE_ULP = 1,
 };
 
-// TODO idf: verify these SPI settings
 class BME680BSECComponent : public Component, public spi::SPIDevice<spi::BIT_ORDER_MSB_FIRST, spi::CLOCK_POLARITY_HIGH, spi::CLOCK_PHASE_TRAILING,
                                        spi::DATA_RATE_1MHZ>  {
  public:

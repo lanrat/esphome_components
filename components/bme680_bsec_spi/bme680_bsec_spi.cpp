@@ -17,7 +17,6 @@ BME680BSECComponent *BME680BSECComponent::instance;
 void BME680BSECComponent::setup() {
   ESP_LOGCONFIG(TAG, "Setting up BME680 via BSEC SPI...");
   this->spi_setup();
-  delay(10); // TODO idf test removing or lowering?
   BME680BSECComponent::instance = this;
 
   this->bsec_status_ = bsec_init();
@@ -328,7 +327,7 @@ void BME680BSECComponent::publish_sensor_state_(sensor::Sensor *sensor, float va
   if (!sensor || (change_only && sensor->has_state() && sensor->state == value)) {
     return;
   }
-  sensor->publish_state(value); // TODO idf sometimes crahses?
+  sensor->publish_state(value);
 }
 
 void BME680BSECComponent::publish_sensor_state_(text_sensor::TextSensor *sensor, std::string value) {
