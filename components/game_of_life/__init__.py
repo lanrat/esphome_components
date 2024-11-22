@@ -2,10 +2,9 @@ CODEOWNERS = ["@lanrat"]
 
 import esphome.codegen as cg
 import esphome.config_validation as cv
-from esphome.components import display, color
+from esphome.components import color
 from esphome.const import (
     CONF_ID,
-    CONF_DISPLAY_ID,
 )
 
 SPEED_MIN = 1
@@ -19,6 +18,8 @@ CONF_COLOR_AGE_2 = "color_age_2"
 CONF_COLOR_AGE_n = "color_age_n"
 CONF_SPARK = "spark"
 CONF_SPEED = "starting_speed"
+CONF_ROWS = "rows"
+CONF_COLS = "cols"
 
 game_of_life_ns = cg.esphome_ns.namespace("game_of_life")
 
@@ -28,7 +29,8 @@ GameOfLife = game_of_life_ns.class_(
 
 CONFIG_SCHEMA = cv.Schema({
   cv.GenerateID(): cv.declare_id(GameOfLife),
-  cv.Required(CONF_DISPLAY_ID): cv.use_id(display.Display),
+  cv.Required(CONF_ROWS): cv.int_range(min=10),
+  cv.Required(CONF_COLS): cv.int_range(min=10),
   cv.Optional(CONF_STARTING_DENSITY, default=20): cv.int_range(min=10),
   cv.Optional(CONF_SPEED, default=7): cv.int_range(min=SPEED_MIN, max=SPEED_MAX),
   cv.Optional(CONF_SPARK, default=True): cv.boolean,
@@ -42,10 +44,8 @@ CONFIG_SCHEMA = cv.Schema({
 async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
-    
-    disp = await cg.get_variable(config[CONF_DISPLAY_ID])
-    cg.add(var.set_display(disp))
    
+    cg.add(var.set_size(config[CONF_COLS], config[CONF_ROWS])) 
     cg.add(var.set_starting_density(config[CONF_STARTING_DENSITY]))   
     cg.add(var.set_spark(config[CONF_SPARK]))    
     cg.add(var.set_speed(config[CONF_SPEED]))   

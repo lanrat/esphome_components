@@ -9,7 +9,8 @@ Inspired from: https://github.com/jackmachiela/PhotoLife
 ```yaml
 game_of_life:
   id: gol
-  display_id: display
+  rows: 32
+  cols: 64
   color_age_1: COLOR_CSS_GREEN
   color_age_2: COLOR_CSS_INDIANRED
   color_age_n: COLOR_CSS_DARKORANGE
@@ -24,5 +25,5 @@ number:
 
 display:
     - id: display
-      lambda: id(gol).render();
+      lambda: id(gol).draw(0, 0, it);
 ```

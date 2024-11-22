@@ -66,13 +66,11 @@ void GameOfLife::set_spark(bool spark) {
   this->run_spark_ = spark;
 }
 
-void GameOfLife::set_display(display::Display *display) {
-  this->display_ = display;
-  this->rows = this->display_->get_height();
-  this->cols = this->display_->get_width();
+void GameOfLife::set_size(int cols, int rows) {
+  this->cols = cols;
+  this->rows = rows;
 
-  // Initializing a single row
-	std::vector<char> row(this->cols, AGE_DEAD);
+  std::vector<char> row(this->cols, AGE_DEAD);
   row.shrink_to_fit();
   // Initializing the 2-D vector
 	this->current_state_ = std::vector<std::vector<char>>(this->rows, row);
@@ -99,7 +97,7 @@ uint8_t GameOfLife::get_speed() {
   return this->speed_;
 }
 
-void GameOfLife::render() {
+void GameOfLife::draw(int x, int y, display::Display & display) {
   this->mutex_.lock();
 
   for (int r = 0; r < this->rows; r++) {     // for each row
@@ -117,7 +115,7 @@ void GameOfLife::render() {
           color = color_age_n;
           break;
       }
-      this->display_->draw_pixel_at(c,r,color);
+      display.draw_pixel_at(x+c,y+r,color);
 
     }
   }
@@ -238,7 +236,7 @@ void GameOfLife::loop() {
 
 void GameOfLife::set_next_call_ns_() {
   auto wait_ms = 1000-((this->speed_)*100);
-  ESP_LOGD(TAG, "Waiting for %d ms for next iteration", wait_ms);
+  //ESP_LOGD(TAG, "Waiting for %d ms for next iteration", wait_ms);
   this->next_call_ns_ = (wait_ms * INT64_C(1000000)) + this->get_time_ns_();
 }
 

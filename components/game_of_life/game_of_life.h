@@ -37,7 +37,7 @@ class GameOfLife : public Component {
         void loop() override;
         float get_setup_priority() const override { return setup_priority::PROCESSOR; }
 
-        void set_display(display::Display *);
+        void set_size(int, int);
         void set_starting_density(int);
         void set_color_off(esphome::Color);
         void set_color_age_1(esphome::Color);
@@ -53,7 +53,7 @@ class GameOfLife : public Component {
 
         void spark_of_life();
         void reset();
-        void render();
+        void draw(int, int, display::Display&);
         void start() { this->running_ = true; };
         void stop() { this->running_ = false; };
 
@@ -76,7 +76,7 @@ class GameOfLife : public Component {
         esphome::Color color_off, color_age_1, color_age_2, color_age_n;
         uint starting_density_;
         std::vector<std::vector<char>> current_state_;
-        display::Display * display_;
+        //display::Display * display_;
         int rows, cols;
         uint iteration_;
         uint alive_, alive_same_count_, topWeight_;
