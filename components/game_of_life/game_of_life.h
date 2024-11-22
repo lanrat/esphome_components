@@ -2,8 +2,6 @@
 #include "esphome/core/component.h"
 #include "esphome/components/display/display.h"
 #include "esphome/core/color.h"
-//#include "esphome/core/helpers.h"
-
 #include "esphome/core/preferences.h"
 
 #define AGE_DEAD 0
