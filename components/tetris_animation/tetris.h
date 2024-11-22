@@ -4,7 +4,6 @@
 #include "TetrisMatrixDraw.h"
 
 // TODO adjust speed
-// TODO force reset
 
 namespace esphome {
 namespace tetris_animation {

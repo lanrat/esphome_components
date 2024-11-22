@@ -1,12 +1,13 @@
 #include "game_of_life.h"
 #include "esphome/core/log.h"
+#include "esphome/core/hal.h"
 
 namespace esphome {
 namespace game_of_life {
 
 static const char *const TAG = "game_of_life";
 
-GameOFLife::GameOFLife() {
+GameOfLife::GameOfLife() {
   // set defaults
   this->set_color_off(color_off);
   this->set_color_age_1(color_age_1);
@@ -14,11 +15,11 @@ GameOFLife::GameOFLife() {
   this->set_color_age_n(color_age_n);
 }
 
-void GameOFLife::setup() {
+void GameOfLife::setup() {
   this->reset();
 }
 
-void GameOFLife::reset() {
+void GameOfLife::reset() {
   this->alive_ = 0;
   int num;
   this->mutex_.lock();
@@ -40,27 +41,32 @@ void GameOFLife::reset() {
   this->alive_same_count_ = 0;
 }
 
-void GameOFLife::set_color_off(esphome::Color color) {
+void GameOfLife::set_color_off(esphome::Color color) {
   this->color_off = color;
 }
 
-void GameOFLife::set_color_age_1(esphome::Color color) {
+void GameOfLife::set_color_age_1(esphome::Color color) {
   this->color_age_1 = color;
 }
 
-void GameOFLife::set_color_age_2(esphome::Color color) {
+void GameOfLife::set_color_age_2(esphome::Color color) {
   this->color_age_2 = color;
 }
 
-void GameOFLife::set_color_age_n(esphome::Color color) {
+void GameOfLife::set_color_age_n(esphome::Color color) {
   this->color_age_n = color;
 }
 
-void GameOFLife::set_spark(bool spark) {
+void GameOfLife::set_speed(uint8_t speed) {
+  this->speed_ = speed;
+  this->set_next_call_ns_();
+}
+
+void GameOfLife::set_spark(bool spark) {
   this->run_spark_ = spark;
 }
 
-void GameOFLife::set_display(display::Display *display) {
+void GameOfLife::set_display(display::Display *display) {
   this->display_ = display;
   this->rows = this->display_->get_height();
   this->cols = this->display_->get_width();
@@ -73,23 +79,27 @@ void GameOFLife::set_display(display::Display *display) {
   this->current_state_.shrink_to_fit();
 }
 
-void GameOFLife::set_starting_density(int starting_density) {
+void GameOfLife::set_starting_density(int starting_density) {
   this->starting_density_ = starting_density;
 }
 
-uint GameOFLife::get_population() {
+uint GameOfLife::get_population() {
   return this->alive_;
 }
 
-uint GameOFLife::get_top_population() {
+uint GameOfLife::get_top_population() {
   return this->topWeight_;
 }
 
-uint GameOFLife::get_iteration() {
+uint GameOfLife::get_iteration() {
   return this->iteration_;
 }
 
-void GameOFLife::render() {
+uint8_t GameOfLife::get_speed() {
+  return this->speed_;
+}
+
+void GameOfLife::render() {
   this->mutex_.lock();
 
   for (int r = 0; r < this->rows; r++) {     // for each row
@@ -114,7 +124,7 @@ void GameOFLife::render() {
   this->mutex_.unlock();
 }
 
-void GameOFLife::spark_of_life() {
+void GameOfLife::spark_of_life() {
   int num;
   bool value;
 
@@ -132,7 +142,7 @@ void GameOFLife::spark_of_life() {
   }
 }
 
-void GameOFLife::nextIteration() {
+void GameOfLife::nextIteration() {
   int x;
   int y;
   char value;
@@ -203,26 +213,49 @@ void GameOFLife::nextIteration() {
   if (weight >= this->topWeight_) this->topWeight_=weight;
 }
 
-void GameOFLife::loop() {
-  // TODO remove loop, and only increment when display is active?
-  // TODO speed control
-  // TODO polling componenet?
-  // update_interval?
+void GameOfLife::loop() {
+  if (!this->running_) return;
 
   // do not iterate game state when running spark_of_life, or the component will take too long
-
   // if the number of alive cells has remained constant for a while, add some random mutations to keep things interesting
   if (this->run_spark_ && alive_same_count_ > ((this->cols*this->rows) /6)) {
     ESP_LOGD(TAG, "SparkOfLife:  alive_same_count_: %d iteration: %d", this->alive_same_count_, this->iteration_);
     this->alive_same_count_ = 0;
     if ( this->iteration_ > 20) this->spark_of_life();  
   } else {
+
+    // check if this should run based on speed
+    int64_t curr_time_ns = this->get_time_ns_();
+    if (curr_time_ns < this->next_call_ns_) {
+      return;
+    }
+    
+    // set next time to run
+    this->set_next_call_ns_();
     this->nextIteration();
   }
 }
 
-void GameOFLife::dump_config() {
+void GameOfLife::set_next_call_ns_() {
+  auto wait_ms = 1000-((this->speed_)*100);
+  ESP_LOGD(TAG, "Waiting for %d ms for next iteration", wait_ms);
+  this->next_call_ns_ = (wait_ms * INT64_C(1000000)) + this->get_time_ns_();
+}
+
+void GameOfLife::dump_config() {
   ESP_LOGCONFIG(TAG, "Starting Density: %d", this->starting_density_);
+  ESP_LOGCONFIG(TAG, "Spark Enable: %d", this->run_spark_);
+  ESP_LOGCONFIG(TAG, "Starting Speed: %d", this->speed_);
+}
+
+int64_t GameOfLife::get_time_ns_() {
+  int64_t time_ms = millis();
+  if (this->last_time_ms_ > time_ms) {
+    this->millis_overflow_counter_++;
+  }
+  this->last_time_ms_ = time_ms;
+
+  return (time_ms + ((int64_t) this->millis_overflow_counter_ << 32)) * INT64_C(1000000);
 }
 
 } // namespace game_of_life

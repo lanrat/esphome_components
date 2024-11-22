@@ -8,23 +8,29 @@ from esphome.const import (
     CONF_DISPLAY_ID,
 )
 
+SPEED_MIN = 1
+SPEED_MAX = 10
+
+GAME_OF_LIFE_ID = "game_of_life_id"
 CONF_STARTING_DENSITY = "starting_density"
 CONF_COLOR_OFF = "color_off"
 CONF_COLOR_AGE_1 = "color_age_1"
 CONF_COLOR_AGE_2 = "color_age_2"
 CONF_COLOR_AGE_n = "color_age_n"
 CONF_SPARK = "spark"
+CONF_SPEED = "starting_speed"
 
 game_of_life_ns = cg.esphome_ns.namespace("game_of_life")
 
-GameOFLife = game_of_life_ns.class_(
-    "GameOFLife", cg.Component
+GameOfLife = game_of_life_ns.class_(
+    "GameOfLife", cg.Component
 )
 
 CONFIG_SCHEMA = cv.Schema({
-  cv.GenerateID(): cv.declare_id(GameOFLife),
+  cv.GenerateID(): cv.declare_id(GameOfLife),
   cv.Required(CONF_DISPLAY_ID): cv.use_id(display.Display),
   cv.Optional(CONF_STARTING_DENSITY, default=20): cv.int_range(min=10),
+  cv.Optional(CONF_SPEED, default=7): cv.int_range(min=SPEED_MIN, max=SPEED_MAX),
   cv.Optional(CONF_SPARK, default=True): cv.boolean,
   cv.Optional(CONF_COLOR_OFF): cv.use_id(color.ColorStruct),
   cv.Optional(CONF_COLOR_AGE_1): cv.use_id(color.ColorStruct),
@@ -41,7 +47,8 @@ async def to_code(config):
     cg.add(var.set_display(disp))
    
     cg.add(var.set_starting_density(config[CONF_STARTING_DENSITY]))   
-    cg.add(var.set_spark(config[CONF_SPARK]))
+    cg.add(var.set_spark(config[CONF_SPARK]))    
+    cg.add(var.set_speed(config[CONF_SPEED]))   
     
     if color_off_config := config.get(CONF_COLOR_OFF):
         color_off = await cg.get_variable(color_off_config)

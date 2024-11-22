@@ -13,6 +13,7 @@ namespace esphome::auto_brightness::auto_brightness_switch
     {
         // Update component status and forward state to all registered switches.
         this->componenet_->set_state(state);
+
         for (AutoBrightnessSwitch *switch_ : this->componenet_->get_enable_switches())
         {
             switch_->publish_state(state);
