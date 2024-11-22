@@ -28,11 +28,6 @@ namespace tetris_animation {
 
 static const char *const TAG = "TetrisMatrixDraw";
 
-TetrisMatrixDraw::TetrisMatrixDraw(esphome::display::Display *display)	{
-    this->display = display;
-    TetrisMatrixDraw();
-}
-
 TetrisMatrixDraw::TetrisMatrixDraw()	{
     resetNumStates();
 }

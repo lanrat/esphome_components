@@ -55,7 +55,6 @@ static const esphome::Color tetrisBLACK = esphome::Color(0, 0, 0);
 class TetrisMatrixDraw
 {
     public:
-        TetrisMatrixDraw(esphome::display::Display *display);
         TetrisMatrixDraw();
         bool drawNumbers(int x = 0, int y = 0, bool displayColon = false);
         bool drawText(int x = 0, int y = 0);

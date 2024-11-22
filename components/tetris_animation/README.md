@@ -11,7 +11,6 @@ Currently in development
 ```yaml
 tetris_animation:
   id: tetris
-  display_id: my_display
   time_id: sntp_time
 
 button:
@@ -19,4 +18,8 @@ button:
     name: "Reset Tetris"
     on_press:
       - lambda: id(tetris).reset();
+
+display:
+  - id: my_display
+    lambda: id(tetris).draw(it)
 ```

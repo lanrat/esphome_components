@@ -76,7 +76,6 @@ class GameOfLife : public Component {
         esphome::Color color_off, color_age_1, color_age_2, color_age_n;
         uint starting_density_;
         std::vector<std::vector<char>> current_state_;
-        //display::Display * display_;
         int rows, cols;
         uint iteration_;
         uint alive_, alive_same_count_, topWeight_;

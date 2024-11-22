@@ -11,10 +11,6 @@ void TetrisAnimation::setup() {
   this->reset();
 }
 
-void TetrisAnimation::set_display(display::Display *display) {
-  this->tetris_.display = display;
-}
-
 void TetrisAnimation::set_time_source(time::RealTimeClock *time) {
   this->rtc_ = time;
 
@@ -37,12 +33,13 @@ void TetrisAnimation::set_scale(int scale) {
   this->tetris_.scale = scale;
 }
 
-void TetrisAnimation::draw() {
-  int x_pos = (this->tetris_.display->get_width() - (this->tetris_.calculateWidth()*this->tetris_.scale)) / 2;
+void TetrisAnimation::draw(display::Display& display) {
+  int x_pos = (display.get_width() - (this->tetris_.calculateWidth()*this->tetris_.scale)) / 2;
   x_pos /= this->tetris_.scale;
 
-  int y_pos = (this->tetris_.display->get_height() + (TETRIS_Y_DROP_DEFAULT*this->tetris_.scale)) / 2;
+  int y_pos = (display.get_height() + (TETRIS_Y_DROP_DEFAULT*this->tetris_.scale)) / 2;
 
+  this ->tetris_.display = &display;
   this->tetris_.drawNumbers(x_pos, y_pos, true);
 }
 
