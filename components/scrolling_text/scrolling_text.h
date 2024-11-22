@@ -8,6 +8,21 @@ namespace scrolling_text {
 
 // TODO can support multiple scrolling at the same time if I use a vector of states.
 
+struct scrolling_instance {
+    int64_t next_call_ns_{0};
+    bool running_ = false;
+    display::BaseFont* font_;
+    int width_, height_;
+    bool scroll_;
+    int text_width_;
+    int text_x_;
+    char text_[256];
+    esphome::Color color_;
+    int scroll_count_ = 0;
+    uint32_t frame_delay_ms_;
+};
+
+
 class ScrollingText : public Component {
     public:
         void dump_config() override;
@@ -21,9 +36,8 @@ class ScrollingText : public Component {
         // if it succeeds, returns true, else false and try again.
         bool stop_when_clear();
 
-        void set_frame_delay(uint32_t delay) { this->frame_delay_ms_ = delay; };
-        int get_scroll_count() { return this->scroll_count_; };
-        void set_dimensions(int width, int height) { this->width_ = width; this->height_ = height; };
+        void set_frame_delay(uint32_t delay) { this->instance.frame_delay_ms_ = delay; };
+        int get_scroll_count() { return this->instance.scroll_count_; };
 
         void draw(display::Display& display, int x, int y);
 
@@ -46,21 +60,12 @@ class ScrollingText : public Component {
             std::string text);
 
     protected:
-        bool running_ = false;
-        display::BaseFont* font_;
-        int width_, height_;
-        bool scroll_;
-        int text_width_;
-        int text_x_;
-        char text_[256];
-        esphome::Color color_;
-        int scroll_count_ = 0;
-        uint32_t frame_delay_ms_;
+        // session data
+        scrolling_instance instance;
 
         // timer
         int64_t get_time_ns_();
         void set_next_call_ns_();
-        int64_t next_call_ns_{0};
         int64_t last_time_ms_{0};
         uint32_t millis_overflow_counter_{0};
 
