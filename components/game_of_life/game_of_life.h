@@ -51,7 +51,7 @@ class GameOfLife : public Component {
 
         void spark_of_life();
         void reset();
-        void draw(int, int, display::Display&);
+        void draw(display::Display&, int, int);
         void start() { this->running_ = true; };
         void stop() { this->running_ = false; };
 

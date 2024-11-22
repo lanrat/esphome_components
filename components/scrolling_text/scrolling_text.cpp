@@ -30,6 +30,22 @@ bool ScrollingText::stop_when_clear() {
   return false;
 }
 
+void ScrollingText::print(int width, int height,
+            display::BaseFont* font, esphome::Color color,
+            uint32_t frame_delay_ms,
+            bool center_short,
+            std::string text) {
+  this->print(width, height, font, color, frame_delay_ms, center_short, text.c_str());
+}
+
+void ScrollingText::print(int width, int height,
+            display::BaseFont* font, esphome::Color color,
+            uint32_t frame_delay_ms,
+            bool center_short,
+            const char * text) {
+  this->printf(width, height, font, color, frame_delay_ms, center_short, "%s", text);
+}
+
 void ScrollingText::printf(int width, int height,
             display::BaseFont* font, esphome::Color color,
             uint32_t frame_delay_ms,
@@ -72,7 +88,7 @@ void ScrollingText::printf(int width, int height,
   this->running_ = true;
 }
 
-void ScrollingText::render(display::Display& display, int x, int y) {
+void ScrollingText::draw(display::Display& display, int x, int y) {
   // render the text on the display
   if (this->running_ && this->font_ != NULL) {
     int x_pos = x + this->text_x_;

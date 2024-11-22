@@ -97,7 +97,7 @@ uint8_t GameOfLife::get_speed() {
   return this->speed_;
 }
 
-void GameOfLife::draw(int x, int y, display::Display & display) {
+void GameOfLife::draw(display::Display & display, int x, int y) {
   this->mutex_.lock();
 
   for (int r = 0; r < this->rows; r++) {     // for each row

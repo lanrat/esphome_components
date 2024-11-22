@@ -8,7 +8,7 @@ scrolling_text:
 
 display:
     - id: display
-      lambda: id(scrolling_text_id).render(it, 0, 0);
+      lambda: id(scrolling_text_id).draw(it, 0, 0);
 
 script:
   - id: id_notification_script

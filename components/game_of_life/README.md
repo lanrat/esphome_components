@@ -25,5 +25,5 @@ number:
 
 display:
     - id: display
-      lambda: id(gol).draw(0, 0, it);
+      lambda: id(gol).draw(it, 0, 0);
 ```

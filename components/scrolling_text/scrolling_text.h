@@ -25,13 +25,25 @@ class ScrollingText : public Component {
         int get_scroll_count() { return this->scroll_count_; };
         void set_dimensions(int width, int height) { this->width_ = width; this->height_ = height; };
 
-        void render(display::Display& display, int x, int y);
+        void draw(display::Display& display, int x, int y);
 
         void printf(int width, int height,
             display::BaseFont* font, esphome::Color color,
             uint32_t frame_delay_ms,
             bool center_short,
             const char *format, ...);
+        
+        void print(int width, int height,
+            display::BaseFont* font, esphome::Color color,
+            uint32_t frame_delay_ms,
+            bool center_short,
+            const char * text);
+        
+        void print(int width, int height,
+            display::BaseFont* font, esphome::Color color,
+            uint32_t frame_delay_ms,
+            bool center_short,
+            std::string text);
 
     protected:
         bool running_ = false;
