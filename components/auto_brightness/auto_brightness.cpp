@@ -79,9 +79,9 @@ void AutoBrightness::update_brightness(float sensor_value) {
 void AutoBrightness::dump_config() {
   LOG_SENSOR("  ", "Sensor", this->sensor_);
   LOG_NUMBER("  ", "Number", this->number_);
-  ESP_LOGCONFIG(TAG, "Decrease Offset", this->decrease_light_level_offset);
+  ESP_LOGCONFIG(TAG, "Decrease Offset: %d", this->decrease_light_level_offset);
   for (auto &level : this->levels) {
-    ESP_LOGCONFIG(TAG, "  Level: %d -> %d", level.first, level.second);
+    ESP_LOGCONFIG(TAG, "  Level: %.3f -> %.3f", level.first, level.second);
   }
 }
 
