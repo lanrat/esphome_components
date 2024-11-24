@@ -39,7 +39,6 @@ void Transit511::setup() {
 
 void Transit511::http_response_callback(std::shared_ptr<http_request::HttpContainer> response, std::string & body) {
     ESP_LOGD(TAG, "response finished in %dms content length: %d, code: %d", response->duration_ms, response->content_length, response->status_code);
-    // TODO json parse body
 
     if (!http_request::is_success(response->status_code)) {
         ESP_LOGE(TAG, "HTTP Error code: %d", response->status_code);
@@ -55,6 +54,15 @@ void Transit511::http_error_callback() {
 
 
 void Transit511::loop() {
+    const uint update_sec = 5;
+    if (this->routes.size() > 0) {
+        auto ms = millis();
+        if ((ms-update_active_last_ms) >= (update_sec * 1000)) {
+            update_active_last_ms = ms;
+            this->update_active_routes(this->max_eta_ms_);
+        }
+    }
+
     this->refresh();
 }
 
@@ -93,10 +101,51 @@ void Transit511::refresh(bool force) {
         this->http_action_->set_url(source.url.c_str());
         this->http_action_->play();
     }
+
+    this->cleanup_route_ETAs();
     
     // set next time to run
     this->set_next_call_ns_();
     this->running_ = false;
+}
+
+
+// get called automatically every second
+void Transit511::update_active_routes(uint before_ms) {
+    ESPTime esp_now = this->rtc_->now();
+    if (!esp_now.is_valid()) {
+        return;
+    }
+    time_t now = esp_now.timestamp;
+    time_t before_time = now + (before_ms/1000); // ms -> sec
+    std::map<std::string, bool> active;
+    for (const auto &route : this->routes) {
+        for (const auto &eta : route.second) {
+            if (eta->ETA >= now && eta->ETA <= before_time) {
+                active[route.first] = true;
+                break;
+            }
+        }
+    }
+
+    this->active_.swap(active);
+}
+
+void Transit511::cleanup_route_ETAs() {
+    // Note, this will leave old routes in allETAs until next refresh
+    time_t now = this->rtc_->now().timestamp;
+    // if a route or source only has ETAs in the past, remove it
+    // routes
+    for (const auto &route : this->routes) {
+        // remove if empty
+        if (route.second.empty()) {
+            this->routes.erase(route.first);
+        }
+        // remove route if last ETA is in past
+        if (route.second.back()->ETA < now) {
+            this->routes.erase(route.first);
+        }
+    }
 }
 
 void Transit511::add_source(std::string url) {
@@ -225,10 +274,8 @@ void Transit511::parse_transit_response(std::string body){
 }
 
 void Transit511::sortETA() {
-    //yield(); // allow other tasks to run
-
     // temp variables to build the new sorted list and swap with the global ones
-    std::vector<const transitRouteETA*> newETA;
+    //std::vector<const transitRouteETA*> newETA;
     std::map<std::string, std::vector<const transitRouteETA*>> newRoutes;
 
     // TODO make more efficient with a priority list
@@ -239,17 +286,16 @@ void Transit511::sortETA() {
 
         for(const auto& eta : route_stop.second) {
             // add to vector of all ETAs
-            newETA.push_back(&eta);
+            //newETA.push_back(&eta);
             // add to map per line
             newRoutes[eta.Name].push_back(&eta);
         }
     }
     // TODO do a form of insertion sort.
-    sort(newETA.begin(), newETA.end(), etaCmp);
+   // sort(newETA.begin(), newETA.end(), etaCmp);
 
     // sort all lines (with directions merged)
     for (auto & route : newRoutes) {
-        //yield(); // allow other tasks to run
 
         // TODO do a form of insertion sort.
         sort(route.second.begin(), route.second.end(), etaCmp);
@@ -257,8 +303,8 @@ void Transit511::sortETA() {
     }
 
     this->routes.swap(newRoutes);
-    this->allETAs.swap(newETA);
-    this->allETAs.shrink_to_fit();
+    // this->allETAs.swap(newETA);
+    // this->allETAs.shrink_to_fit();
 }
 
 void Transit511::addETAs(std::vector<transitRouteETA> etas) {

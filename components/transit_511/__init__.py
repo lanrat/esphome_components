@@ -21,6 +21,7 @@ CONF_DEFAULT_ROUTE_COLOR = "default_route_color"
 CONF_ROUTE_COLORS = "route_colors"
 CONF_DIRECTION_COLORS = "direction_colors"
 CONF_SEPARATOR_COLOR = "separator_color"
+CONF_MAX_ETA = "max_eta"
 
 transit_511_ns = cg.esphome_ns.namespace("transit_511")
 
@@ -42,12 +43,13 @@ CONFIG_SCHEMA = cv.Schema({
     ),
     cv.Optional(
         CONF_REFRESH_INTERVAL, default="5min"
-    ): cv.positive_time_period_minutes,
+    ): cv.positive_time_period_seconds,
     cv.Optional(CONF_MAX_RESPONSE_BUFFER_SIZE, default="1kB"): cv.validate_bytes,
     cv.Optional(CONF_DEFAULT_ROUTE_COLOR): cv.use_id(color.ColorStruct),
     cv.Optional(CONF_SEPARATOR_COLOR): cv.use_id(color.ColorStruct),
     cv.Optional(CONF_ROUTE_COLORS): COLOR_SCHEMA,
     cv.Optional(CONF_DIRECTION_COLORS): COLOR_SCHEMA,
+    cv.Optional(CONF_MAX_ETA, default="60min"): cv.positive_time_period_minutes,
 }).extend(cv.COMPONENT_SCHEMA)
 
 async def to_code(config):
@@ -55,6 +57,7 @@ async def to_code(config):
     await cg.register_component(var, config)
 
     cg.add(var.set_refresh(config[CONF_REFRESH_INTERVAL].total_milliseconds))
+    cg.add(var.set_max_eta_ms(config[CONF_MAX_ETA].total_milliseconds))
     cg.add(var.set_max_response_buffer_size(config[CONF_MAX_RESPONSE_BUFFER_SIZE]))
 
     time_ = await cg.get_variable(config[CONF_TIME_ID])

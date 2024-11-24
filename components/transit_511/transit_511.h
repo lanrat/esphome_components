@@ -9,9 +9,6 @@
 namespace esphome {
 namespace transit_511 {
 
-// TODO may need to add a way to remove a route that is no longer active (ex: NOWL)
-// TODO if line only has times in past, remove it
-
 struct source {
     std::string url;
     //uint32_t refresh_ms;
@@ -66,6 +63,9 @@ class Transit511 : public Component {
         void set_separator_color(esphome::Color color) {
             this->separator_color_ = color;
         }
+        void set_max_eta_ms(uint max_ms) {
+            this->max_eta_ms_ = max_ms;
+        }
 
         esphome::Color get_route_color(std::string route);
         esphome::Color get_direction_color(std::string direction);
@@ -76,11 +76,14 @@ class Transit511 : public Component {
 
         const std::map<std::string, std::vector<transitRouteETA>> get_reference_routes() { return this->reference_routes; };
         const std::map<std::string, std::vector<const transitRouteETA*>> get_routes() { return this->routes; };
-        const std::vector<const transitRouteETA*> get_ETAs() { return this->allETAs; };
+        //const std::vector<const transitRouteETA*> get_ETAs() { return this->allETAs; };
 
         void debug_print();
-        bool has_data() {return this->routes.size() > 0;}; // TODO check that at least one ETA is in the future
 
+        // returns the number of active routes with ETAs before before
+        uint get_num_active_routes() { return this->active_.size(); };
+        //uint get_num_active_routes_now(time_t after, time_t before);
+        bool is_route_active(std::string route){ return this->active_[route]; };
 
     protected:
         void http_response_callback(std::shared_ptr<http_request::HttpContainer> response, std::string & body);
@@ -94,12 +97,15 @@ class Transit511 : public Component {
         void parse_transit_response(std::string body);
         void sortETA();
         void addETAs(std::vector<transitRouteETA> etas);
+        void cleanup_route_ETAs();
+        void update_active_routes(uint before_ms);
 
         // settings
         std::vector<source> sources_;
         uint32_t refresh_ms_;
         time::RealTimeClock *rtc_;
         bool running_ = false;
+        uint max_eta_ms_ = UINT_MAX;
 
         // transit data
         // map of all routes per stop to sorted ETAs
@@ -107,7 +113,8 @@ class Transit511 : public Component {
         // map of all route lines to sorted ETAs
         std::map<std::string, std::vector<const transitRouteETA*>> routes;
         // all ETAs merged and sorted
-        std::vector<const transitRouteETA*> allETAs;
+        //std::vector<const transitRouteETA*> allETAs;
+        std::map<std::string, bool> active_;
 
         // colors
         std::map<std::string, esphome::Color> direction_colors_;
@@ -120,6 +127,7 @@ class Transit511 : public Component {
         int64_t next_call_ns_{0};
         int64_t last_time_ms_{0};
         uint32_t millis_overflow_counter_{0};
+        uint32_t update_active_last_ms{0};
 };
 
 void debug_print_tm(tm t);
