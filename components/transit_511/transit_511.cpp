@@ -1,6 +1,8 @@
 #include "transit_511.h"
 #include "esphome/core/log.h"
 #include "esphome/core/hal.h"
+#include "esphome/core/base_automation.h"
+
 #include "esphome/components/json/json_util.h"
 
 namespace esphome {
@@ -9,7 +11,46 @@ namespace transit_511 {
 static const char *const TAG = "transit_511";
 
 void Transit511::setup() {
+    //  set action
+    this->http_action_ = new http_request::HttpRequestSendAction<>(this->http_);
+    this->http_action_->set_method("GET");
+    this->http_action_->set_max_response_buffer_size(this->max_response_buffer_size_);
+    this->http_action_->add_header("Accept-Encoding", "identity"); // disables GZIP
+    this->http_action_->set_capture_response(true);
+
+    // HTTP response trigger
+    auto http_response_trigger = new http_request::HttpRequestResponseTrigger();
+    this->http_action_->register_response_trigger(http_response_trigger);
+    auto http_response_trigger_automation = new Automation<std::shared_ptr<http_request::HttpContainer>, std::string &>(http_response_trigger);
+    auto *http_response_lambda = new LambdaAction<std::shared_ptr<http_request::HttpContainer>, std::string &>
+    ([=](std::shared_ptr<http_request::HttpContainer> response, std::string & body) -> void { this->http_response_callback(response, body); });
+    http_response_trigger_automation->add_actions({http_response_lambda});
+
+    // HTTP error trigger
+    auto http_error_trigger = new Trigger<>();
+    this->http_action_->register_error_trigger(http_error_trigger);
+    auto http_error_trigger_automation = new Automation<>(http_error_trigger);
+    auto http_error_lambda = new LambdaAction<>([=]() -> void { this->http_error_callback(); });
+    http_error_trigger_automation->add_actions({http_error_lambda});
 }
+
+
+void Transit511::http_response_callback(std::shared_ptr<http_request::HttpContainer> response, std::string & body) {
+    ESP_LOGD(TAG, "response finished in %dms content length: %d, code: %d", response->duration_ms, response->content_length, response->status_code);
+    // TODO json parse body
+
+    if (!http_request::is_success(response->status_code)) {
+        ESP_LOGE(TAG, "HTTP Error code: %d", response->status_code);
+        return;
+    }
+
+    this->parse_transit_response(body);
+}
+
+void Transit511::http_error_callback() {
+    ESP_LOGE(TAG, "HTTP Error!");
+}
+
 
 void Transit511::loop() {
     // check if this should run based on speed
@@ -17,21 +58,51 @@ void Transit511::loop() {
     if (curr_time_ns < this->next_call_ns_) {
       return;
     }
+
+    // do work
+    this->refresh();
+}
+
+void Transit511::refresh() {
+    if (!this->http_action_) {
+        // not ready yet
+        ESP_LOGE(TAG, "ERROR: refresh() called before setup()");
+        return;
+    }
+    if (this->running_) {
+        ESP_LOGE(TAG, "ERROR: Already running!");
+        return;
+    }
+    ESP_LOGD(TAG, "Refreshing Data");
+
+    this->running_ = true;
+    for (const auto source : this->sources_) {
+        ESP_LOGD(TAG, "Requesting: %s", source.url.c_str());
+        this->http_action_->set_url(source.url.c_str());
+        this->http_action_->play();
+    }
     // set next time to run
     this->set_next_call_ns_();
 
-    // TODO do work
-    ESP_LOGE(TAG, "Refreshing Data");
+    this->running_ = false;
 }
 
 void Transit511::add_source(std::string url) {
     this->sources_.push_back({url: url});
 }
 
-void Transit511::parse_transit_response(std::string body){
-    //yield(); // allow other tasks to run
+void Transit511::set_wifi(wifi::WiFiComponent *wifi) {
+    // define trigger
+    // auto wifi_connect_trigger = new Trigger<>();
+    // auto wifi_connect_automation = new Automation<>(wifi_connect_trigger);
+    auto wifi_connect_lambda = new LambdaAction<>([=]() -> void { this->refresh(); });
 
-    auto TAG = "Transit";
+    // set trigger
+    auto wifi_connect_automation = new Automation<>(wifi->get_connect_trigger());
+    wifi_connect_automation->add_actions({wifi_connect_lambda});
+}
+
+void Transit511::parse_transit_response(std::string body){
     //ESP_LOGD(TAG, "HTTP Response Body len: %d", body.length());
 
     size_t start = body.find_first_of('{');
@@ -49,8 +120,8 @@ void Transit511::parse_transit_response(std::string body){
 
         /*
         ESP_LOGD(TAG, "PST now [%d]", now.timestamp);
-        ESP_LOGD(TAG, "UTC Now [%d]", id(sntp_time).utcnow().timestamp);
-        ESP_LOGD(TAG, "offset: %d, UTC offset: %d isDST: %d", now.timezone_offset(), id(sntp_time).utcnow().timezone_offset(), now.is_dst);
+        ESP_LOGD(TAG, "UTC Now [%d]", this->rtc_.utcnow().timestamp);
+        ESP_LOGD(TAG, "offset: %d, UTC offset: %d isDST: %d", now.timezone_offset(), this->rtc_.utcnow().timezone_offset(), now.is_dst);
         */
 
         auto response_ts_str = root["ServiceDelivery"]["StopMonitoringDelivery"]["ResponseTimestamp"].as<const char*>();
@@ -131,7 +202,7 @@ void Transit511::parse_transit_response(std::string body){
         ESP_LOGE(TAG, "Error Parsing JSON");
     }
 
-    this->debugPrint();
+    this->debug_print();
 }
 
 void Transit511::sortETA() {
@@ -187,7 +258,9 @@ void Transit511::addETAs(std::vector<transitRouteETA> etas) {
     etas.clear();
 }
 
-
+void Transit511::set_http(http_request::HttpRequestComponent * http) {
+    this->http_ = http;
+}
 
 void Transit511::set_next_call_ns_() {
   auto wait_ms = this->refresh_ms_;
@@ -197,7 +270,8 @@ void Transit511::set_next_call_ns_() {
 
 void Transit511::dump_config() {
   ESP_LOGCONFIG(TAG, "refresh_ms: %d", this->refresh_ms_);
-  for ( const auto source : this->sources_) {
+  ESP_LOGCONFIG(TAG, "max_response_buffer_size: %d", this->max_response_buffer_size_);
+  for (const auto source : this->sources_) {
     ESP_LOGCONFIG(TAG, "\t URL: %s", source.url.c_str());
   }
 }
@@ -212,8 +286,7 @@ int64_t Transit511::get_time_ns_() {
   return (time_ms + ((int64_t) this->millis_overflow_counter_ << 32)) * INT64_C(1000000);
 }
 
-
-void Transit511::debugPrint() {
+void Transit511::debug_print() {
     if (rtc_ == nullptr) {
         ESP_LOGE(TAG, "Error unable to find Time source!");
         return;
