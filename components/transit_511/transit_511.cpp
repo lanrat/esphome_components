@@ -93,8 +93,6 @@ void Transit511::add_source(std::string url) {
 
 void Transit511::set_wifi(wifi::WiFiComponent *wifi) {
     // define trigger
-    // auto wifi_connect_trigger = new Trigger<>();
-    // auto wifi_connect_automation = new Automation<>(wifi_connect_trigger);
     auto wifi_connect_lambda = new LambdaAction<>([=]() -> void { this->refresh(); });
 
     // set trigger
