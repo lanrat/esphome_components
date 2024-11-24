@@ -3,13 +3,13 @@
 #include "esphome/components/time/real_time_clock.h"
 #include "esphome/components/http_request/http_request.h"
 #include "esphome/components/wifi/wifi_component.h"
+#include "esphome/core/color.h"
 #include <map>
 
 namespace esphome {
 namespace transit_511 {
 
 // TODO may need to add a way to remove a route that is no longer active (ex: NOWL)
-// TODO refresh automatically on wifi connected
 // TODO if line only has times in past, remove it
 
 struct source {
@@ -17,7 +17,6 @@ struct source {
     //uint32_t refresh_ms;
 };
 
-// TODO add color, rail, and more style metadata to this
 struct transitRouteETA {
     // line, direction & stop reference number
     std::string reference;
@@ -33,6 +32,10 @@ struct transitRouteETA {
     time_t ResponseTimestamp;
     // live tracking
     bool live;
+    // style metadata
+    bool rail;
+    esphome::Color directionColor;
+    esphome::Color routeColor;
 };
 
 
@@ -51,6 +54,22 @@ class Transit511 : public Component {
         void set_max_response_buffer_size(size_t max_response_buffer_size) {
             this->max_response_buffer_size_ = max_response_buffer_size;
         }
+        void set_route_color(std::string route, esphome::Color color) {
+            this->route_colors_[route] = color;
+        }
+        void set_direction_color(std::string direction, esphome::Color color) {
+            this->direction_colors_[direction] = color;
+        }
+        void set_default_route_color(esphome::Color color) {
+            this->default_route_color_ = color;
+        }
+        void set_separator_color(esphome::Color color) {
+            this->separator_color_ = color;
+        }
+
+        esphome::Color get_route_color(std::string route);
+        esphome::Color get_direction_color(std::string direction);
+        esphome::Color get_separator_color() { return this->separator_color_; };
 
         void refresh(bool force=false);
         bool running() { return this->running_; };
@@ -90,6 +109,11 @@ class Transit511 : public Component {
         // all ETAs merged and sorted
         std::vector<const transitRouteETA*> allETAs;
 
+        // colors
+        std::map<std::string, esphome::Color> direction_colors_;
+        std::map<std::string, esphome::Color> route_colors_;
+        esphome::Color default_route_color_, separator_color_;
+
         // scheduling
         int64_t get_time_ns_();
         void set_next_call_ns_();
@@ -103,7 +127,7 @@ time_t timeFromJSON(const char *str);
 
 bool etaCmp(const transitRouteETA* a, const transitRouteETA* b);
 bool etaCmpRef(const transitRouteETA& a, const transitRouteETA& b);
-
+bool isRail(std::string name);
 
 } // namespace transit_511
 } // namespace esphome

@@ -200,7 +200,10 @@ void Transit511::parse_transit_response(std::string body){
                 .Direction = direction,
                 .RecordedAtTime = recorded_timestamp,
                 .ETA = eta_timestamp,
-                .live = live
+                .live = live,
+                .rail = isRail(lineName),
+                .directionColor = this->get_direction_color(direction),
+                .routeColor = this->get_route_color(lineName),
             };
             etas.push_back(eta);
         }
@@ -267,10 +270,8 @@ void Transit511::addETAs(std::vector<transitRouteETA> etas) {
 
     // check to see if route already exists
     auto ref = etas[0].reference;
-    // TODO not sure if I may need to initialize this first
     this->reference_routes[ref].swap(etas);
     this->sortETA();
-    // TODO possible race condition here....
     etas.clear();
 }
 
@@ -291,6 +292,15 @@ void Transit511::dump_config() {
   for (const auto source : this->sources_) {
     ESP_LOGCONFIG(TAG, "\t URL: %s", source.url.c_str());
   }
+  for (const auto color : this->direction_colors_) {
+    ESP_LOGCONFIG(TAG, "\t Direction Color: %s (%d,%d,%d)", color.first, color.second.red, color.second.green, color.second.blue);
+  }
+  ESP_LOGCONFIG(TAG, "Default Route Color: (%d,%d,%d)", this->default_route_color_.red, this->default_route_color_.green, this->default_route_color_.blue);
+  for (const auto color : this->route_colors_) {
+    ESP_LOGCONFIG(TAG, "\t Route Color: %s (%d,%d,%d)", color.first, color.second.red, color.second.green, color.second.blue);
+  }
+  ESP_LOGCONFIG(TAG, "Separator Color: (%d,%d,%d)", this->separator_color_.red, this->separator_color_.green, this->separator_color_.blue);
+
 }
 
 int64_t Transit511::get_time_ns_() {
@@ -301,6 +311,20 @@ int64_t Transit511::get_time_ns_() {
   this->last_time_ms_ = time_ms;
 
   return (time_ms + ((int64_t) this->millis_overflow_counter_ << 32)) * INT64_C(1000000);
+}
+
+esphome::Color Transit511::get_route_color(std::string route) {
+    auto color = this->default_route_color_;
+    auto search = route_colors_.find(route);
+    if (search != route_colors_.end()) {
+        // ESP_LOGD(TAG, "found custom color for %s", route.first.c_str());
+        color = route_colors_[route];
+    }
+    return color;
+}
+
+esphome::Color Transit511::get_direction_color(std::string direction) {
+    return direction_colors_[direction];
 }
 
 void Transit511::debug_print() {
@@ -379,6 +403,17 @@ bool etaCmp(const transitRouteETA* a, const transitRouteETA* b) {
 
 bool etaCmpRef(const transitRouteETA& a, const transitRouteETA& b) {
     return etaCmp(&a, &b);
+}
+
+// returns true if A-Z
+bool isRail(std::string name) {
+  if (name.length() == 1) {
+    char c = name.c_str()[0];
+    if (c >= 'A' && c <= 'Z') {
+      return true;
+    }
+  }
+  return false;
 }
 
 } // namespace game_of_life
