@@ -39,6 +39,7 @@ struct transitRouteETA {
 class Transit511 : public Component {
     public:
         void dump_config() override;
+        void setup() override;
         void loop() override;
         float get_setup_priority() const override { return setup_priority::AFTER_WIFI; };
 
@@ -67,6 +68,8 @@ class Transit511 : public Component {
         void http_error_callback();
         http_request::HttpRequestSendAction<> *http_action_;
         size_t max_response_buffer_size_ = 0;
+        http_request::HttpRequestComponent * http_;
+        wifi::WiFiComponent *wifi_;
 
         // logic
         void parse_transit_response(std::string body);
