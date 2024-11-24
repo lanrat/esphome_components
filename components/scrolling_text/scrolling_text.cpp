@@ -81,7 +81,7 @@ void ScrollingText::printf(int width, int height,
     this->instance.scroll_count_ = 0;
     this->instance.scroll_ = true;
 
-    ESP_LOGE(TAG, "screen: %dx%d text width: %d, starting_x: %d", this->instance.width_, this->instance.height_, this->instance.text_width_, this->instance.text_x_);
+    ESP_LOGD(TAG, "screen: %dx%d text width: %d, starting_x: %d", this->instance.width_, this->instance.height_, this->instance.text_width_, this->instance.text_x_);
   }
 
   // start
