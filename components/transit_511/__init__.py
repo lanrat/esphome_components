@@ -41,7 +41,10 @@ CONFIG_SCHEMA = cv.Schema({
 async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
-        
+
+    cg.add(var.set_refresh(config[CONF_REFRESH_INTERVAL].total_milliseconds))
+    cg.add(var.set_max_response_buffer_size(config[CONF_MAX_RESPONSE_BUFFER_SIZE]))
+
     time_ = await cg.get_variable(config[CONF_TIME_ID])
     cg.add(var.set_time(time_))
     
@@ -50,9 +53,6 @@ async def to_code(config):
     
     http_ = await cg.get_variable(config[CONF_HTTP_REQUEST_ID])
     cg.add(var.set_http(http_))
-    
-    cg.add(var.set_refresh(config[CONF_REFRESH_INTERVAL].total_milliseconds))
-    cg.add(var.set_max_response_buffer_size(config[CONF_MAX_RESPONSE_BUFFER_SIZE]))
     
     sources = config[CONF_SOURCES]
     for source in sources:

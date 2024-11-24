@@ -10,31 +10,6 @@ namespace transit_511 {
 
 static const char *const TAG = "transit_511";
 
-void Transit511::setup() {
-    //  set action
-    this->http_action_ = new http_request::HttpRequestSendAction<>(this->http_);
-    this->http_action_->set_method("GET");
-    this->http_action_->set_max_response_buffer_size(this->max_response_buffer_size_);
-    this->http_action_->add_header("Accept-Encoding", "identity"); // disables GZIP
-    this->http_action_->set_capture_response(true);
-
-    // HTTP response trigger
-    auto http_response_trigger = new http_request::HttpRequestResponseTrigger();
-    this->http_action_->register_response_trigger(http_response_trigger);
-    auto http_response_trigger_automation = new Automation<std::shared_ptr<http_request::HttpContainer>, std::string &>(http_response_trigger);
-    auto *http_response_lambda = new LambdaAction<std::shared_ptr<http_request::HttpContainer>, std::string &>
-    ([=](std::shared_ptr<http_request::HttpContainer> response, std::string & body) -> void { this->http_response_callback(response, body); });
-    http_response_trigger_automation->add_actions({http_response_lambda});
-
-    // HTTP error trigger
-    auto http_error_trigger = new Trigger<>();
-    this->http_action_->register_error_trigger(http_error_trigger);
-    auto http_error_trigger_automation = new Automation<>(http_error_trigger);
-    auto http_error_lambda = new LambdaAction<>([=]() -> void { this->http_error_callback(); });
-    http_error_trigger_automation->add_actions({http_error_lambda});
-}
-
-
 void Transit511::http_response_callback(std::shared_ptr<http_request::HttpContainer> response, std::string & body) {
     ESP_LOGD(TAG, "response finished in %dms content length: %d, code: %d", response->duration_ms, response->content_length, response->status_code);
     // TODO json parse body
@@ -53,17 +28,18 @@ void Transit511::http_error_callback() {
 
 
 void Transit511::loop() {
-    // check if this should run based on speed
-    int64_t curr_time_ns = this->get_time_ns_();
-    if (curr_time_ns < this->next_call_ns_) {
-      return;
-    }
-
-    // do work
     this->refresh();
 }
 
 void Transit511::refresh(bool force) {
+    // check if this should run based on speed
+    if (!force) {
+        int64_t curr_time_ns = this->get_time_ns_();
+        if (curr_time_ns < this->next_call_ns_) {
+            return;
+        }
+    }
+
     if (!this->http_action_) {
         // not ready yet
         ESP_LOGE(TAG, "ERROR: refresh() called before setup()");
@@ -262,8 +238,34 @@ void Transit511::addETAs(std::vector<transitRouteETA> etas) {
     etas.clear();
 }
 
+// this MUST be called after set_max_response_buffer_size
 void Transit511::set_http(http_request::HttpRequestComponent * http) {
-    this->http_ = http;
+    // Note: calling this more than once can cause a memory leak.
+    // new objects created here are not kept track of or destroyed
+
+    //  set action
+    this->http_action_ = new http_request::HttpRequestSendAction<>(http);
+    this->http_action_->set_method("GET");
+    if (this->max_response_buffer_size_ > 0) {
+        this->http_action_->set_max_response_buffer_size(this->max_response_buffer_size_);
+    }
+    this->http_action_->add_header("Accept-Encoding", "identity"); // disables GZIP
+    this->http_action_->set_capture_response(true);
+
+    // HTTP response trigger
+    auto http_response_trigger = new http_request::HttpRequestResponseTrigger();
+    this->http_action_->register_response_trigger(http_response_trigger);
+    auto http_response_trigger_automation = new Automation<std::shared_ptr<http_request::HttpContainer>, std::string &>(http_response_trigger);
+    auto *http_response_lambda = new LambdaAction<std::shared_ptr<http_request::HttpContainer>, std::string &>
+    ([=](std::shared_ptr<http_request::HttpContainer> response, std::string & body) -> void { this->http_response_callback(response, body); });
+    http_response_trigger_automation->add_actions({http_response_lambda});
+
+    // HTTP error trigger
+    auto http_error_trigger = new Trigger<>();
+    this->http_action_->register_error_trigger(http_error_trigger);
+    auto http_error_trigger_automation = new Automation<>(http_error_trigger);
+    auto http_error_lambda = new LambdaAction<>([=]() -> void { this->http_error_callback(); });
+    http_error_trigger_automation->add_actions({http_error_lambda});
 }
 
 void Transit511::set_next_call_ns_() {
