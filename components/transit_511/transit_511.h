@@ -10,6 +10,7 @@ namespace transit_511 {
 
 // TODO may need to add a way to remove a route that is no longer active (ex: NOWL)
 // TODO refresh automatically on wifi connected
+// TODO if line only has times in past, remove it
 
 struct source {
     std::string url;
@@ -51,7 +52,7 @@ class Transit511 : public Component {
             this->max_response_buffer_size_ = max_response_buffer_size;
         }
 
-        void refresh();
+        void refresh(bool force=false);
         bool running() { return this->running_; };
 
         const std::map<std::string, std::vector<transitRouteETA>> get_reference_routes() { return this->reference_routes; };
@@ -60,6 +61,8 @@ class Transit511 : public Component {
 
         void debug_print();
         bool has_data() {return this->routes.size() > 0;}; // TODO check that at least one ETA is in the future
+
+
     protected:
         void http_response_callback(std::shared_ptr<http_request::HttpContainer> response, std::string & body);
         void http_error_callback();
@@ -69,6 +72,8 @@ class Transit511 : public Component {
 
         // logic
         void parse_transit_response(std::string body);
+        void sortETA();
+        void addETAs(std::vector<transitRouteETA> etas);
 
         // settings
         std::vector<source> sources_;
@@ -83,10 +88,6 @@ class Transit511 : public Component {
         std::map<std::string, std::vector<const transitRouteETA*>> routes;
         // all ETAs merged and sorted
         std::vector<const transitRouteETA*> allETAs;
-
-        void sortETA();
-        void addETAs(std::vector<transitRouteETA> etas);
-        
 
         // scheduling
         int64_t get_time_ns_();

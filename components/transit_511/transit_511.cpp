@@ -63,7 +63,7 @@ void Transit511::loop() {
     this->refresh();
 }
 
-void Transit511::refresh() {
+void Transit511::refresh(bool force) {
     if (!this->http_action_) {
         // not ready yet
         ESP_LOGE(TAG, "ERROR: refresh() called before setup()");
@@ -98,6 +98,9 @@ void Transit511::set_wifi(wifi::WiFiComponent *wifi) {
     // set trigger
     auto wifi_connect_automation = new Automation<>(wifi->get_connect_trigger());
     wifi_connect_automation->add_actions({wifi_connect_lambda});
+
+    // TODO test for wifi before running?
+    //wifi->is_connected();
 }
 
 void Transit511::parse_transit_response(std::string body){
@@ -106,7 +109,10 @@ void Transit511::parse_transit_response(std::string body){
     size_t start = body.find_first_of('{');
     if (start == std::string::npos) {
         // not found
-        ESP_LOGE(TAG, "unable to find '{' to start json parsing");
+        ESP_LOGE(TAG, "unable to find '{' to start json parsing from string size: %d", body.size());
+        if (body.size() > 0) {
+            ESP_LOGE(TAG, "body[:100]: %s", body.substr(0, 100));
+        }
         return;
     }
     body = body.substr(start);
