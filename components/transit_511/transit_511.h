@@ -4,6 +4,7 @@
 #include "esphome/components/http_request/http_request.h"
 #include "esphome/components/wifi/wifi_component.h"
 #include "esphome/core/color.h"
+#include <math.h>
 #include <map>
 
 namespace esphome {
@@ -81,7 +82,7 @@ class Transit511 : public Component {
         void debug_print();
 
         // returns the number of active routes with ETAs before before
-        uint get_num_active_routes() { return this->active_.size(); };
+        uint get_num_active_routes() { return this->num_active_; };
         //uint get_num_active_routes_now(time_t after, time_t before);
         bool is_route_active(std::string route){ return this->active_[route]; };
 
@@ -115,6 +116,7 @@ class Transit511 : public Component {
         // all ETAs merged and sorted
         //std::vector<const transitRouteETA*> allETAs;
         std::map<std::string, bool> active_;
+        uint num_active_ = 0;
 
         // colors
         std::map<std::string, esphome::Color> direction_colors_;

@@ -116,6 +116,7 @@ void Transit511::update_active_routes(uint before_ms) {
     if (!esp_now.is_valid()) {
         return;
     }
+    uint new_active = 0;
     time_t now = esp_now.timestamp;
     time_t before_time = now + (before_ms/1000); // ms -> sec
     std::map<std::string, bool> active;
@@ -123,12 +124,14 @@ void Transit511::update_active_routes(uint before_ms) {
         for (const auto &eta : route.second) {
             if (eta->ETA >= now && eta->ETA <= before_time) {
                 active[route.first] = true;
+                new_active++;
                 break;
             }
         }
     }
 
     this->active_.swap(active);
+    this->num_active_ = new_active;
 }
 
 void Transit511::cleanup_route_ETAs() {
@@ -399,13 +402,18 @@ void Transit511::debug_print() {
     // }
 
     // print from all stops
-    ESP_LOGD(TAG, "routes, len: %d",  routes.size());
-    for(const auto& route : routes) {
+    ESP_LOGD(TAG, "routes, len: %d",  this->routes.size());
+    for(const auto& route : this->routes) {
         ESP_LOGD(TAG, "route: %s len: %d", route.first.c_str(), route.second.size());
         for(const auto& eta : route.second) {
             double eta_s = difftime(eta->ETA, now);
             ESP_LOGD(TAG, "Route: %s:%s ETA: [%d] %.1fmin live: %s", eta->Name.c_str(), eta->Direction.c_str(), eta->ETA, eta_s/60.0, eta->live ? "true" : "false");
         }
+    }
+
+    ESP_LOGD(TAG, "active routes, len: %d, num_active: %d",  this->active_.size(), this->num_active_);
+    for(const auto& line : this->active_) {
+        ESP_LOGD(TAG, "line: %s active: %d", line.first.c_str(), line.second);
     }
 }
 
