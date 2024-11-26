@@ -4,7 +4,7 @@ Based on https://github.com/toblum/TetrisAnimation
 
 Modified for ESPHome
 
-Currently in development
+![tetris clock](https://github.com/user-attachments/assets/871b076d-4c8c-47ad-b68b-1155ede96189)
 
 ## Example
 
