@@ -244,7 +244,13 @@ void Transit511::parse_transit_response(std::string body){
             }
 
             //ESP_LOGI(TAG, "Line: %s, Direction: %s, live: %d, eta: [%d] eta_min: %.1f", lineName.c_str(), direction.c_str(), live, eta_timestamp, eta_s/60.0);
-            
+
+            auto color = this->get_direction_color(direction);
+            if (!live) {
+                // make non-live colors darker
+                color = color.darken(80);
+            }
+
             // create eta
             transitRouteETA eta = {
                 .reference = reference,
@@ -254,7 +260,7 @@ void Transit511::parse_transit_response(std::string body){
                 .ETA = eta_timestamp,
                 .live = live,
                 .rail = isRail(lineName),
-                .directionColor = this->get_direction_color(direction),
+                .directionColor = color,
                 .routeColor = this->get_route_color(lineName),
             };
             etas.push_back(eta);
