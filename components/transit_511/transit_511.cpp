@@ -52,6 +52,14 @@ void Transit511::http_error_callback() {
     ESP_LOGE(TAG, "HTTP Error!");
 }
 
+void Transit511::set_max_response_buffer_size(size_t max_response_buffer_size) {
+    this->max_response_buffer_size_ = max_response_buffer_size;
+
+    // set the action's buffer size in case it is being updated dynamically
+    if (this->http_action_) {
+        this->http_action_->set_max_response_buffer_size(this->max_response_buffer_size_);
+    }
+}
 
 void Transit511::loop() {
     const uint update_sec = 5;

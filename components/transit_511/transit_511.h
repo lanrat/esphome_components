@@ -49,9 +49,7 @@ class Transit511 : public Component {
         void set_wifi(wifi::WiFiComponent *wifi);
         void set_refresh(uint32_t refresh_ms) { this->refresh_ms_ = refresh_ms; };
         void set_http(http_request::HttpRequestComponent * http);
-        void set_max_response_buffer_size(size_t max_response_buffer_size) {
-            this->max_response_buffer_size_ = max_response_buffer_size;
-        }
+        void set_max_response_buffer_size(size_t max_response_buffer_size);
         void set_route_color(std::string route, esphome::Color color) {
             this->route_colors_[route] = color;
         }
