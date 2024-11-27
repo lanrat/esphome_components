@@ -18,8 +18,15 @@ void Transit511::setup() {
     if (this->max_response_buffer_size_ > 0) {
         this->http_action_->set_max_response_buffer_size(this->max_response_buffer_size_);
     }
-    this->http_action_->add_header("Accept-Encoding", "identity"); // disables GZIP
     this->http_action_->set_capture_response(true);
+
+    // https://github.com/espressif/arduino-esp32/pull/9863
+    // NOTE: the current esp-arduino API does not allow overriding this. Setting this header just adds a 2nd value
+    // the upstream (511.org) does not parse it correctly, and responds with gzip data
+    // attempted using a cloudflare to work around this, but cloudflare always responds with HTTP chunked data which
+    //  is also currently broken in ESPHome
+    // working solution was to create a cloudflare worker that grabs all the data and responds unchunking it.
+    this->http_action_->add_header("Accept-Encoding", "identity"); // disables GZIP
 
     // HTTP response trigger
     auto http_response_trigger = new http_request::HttpRequestResponseTrigger();
@@ -356,11 +363,11 @@ void Transit511::dump_config() {
     ESP_LOGCONFIG(TAG, "\t URL: %s", source.url.c_str());
   }
   for (const auto color : this->direction_colors_) {
-    ESP_LOGCONFIG(TAG, "\t Direction Color: %s (%d,%d,%d)", color.first, color.second.red, color.second.green, color.second.blue);
+    ESP_LOGCONFIG(TAG, "\t Direction Color: %s (%d,%d,%d)", color.first.c_str(), color.second.red, color.second.green, color.second.blue);
   }
   ESP_LOGCONFIG(TAG, "Default Route Color: (%d,%d,%d)", this->default_route_color_.red, this->default_route_color_.green, this->default_route_color_.blue);
   for (const auto color : this->route_colors_) {
-    ESP_LOGCONFIG(TAG, "\t Route Color: %s (%d,%d,%d)", color.first, color.second.red, color.second.green, color.second.blue);
+    ESP_LOGCONFIG(TAG, "\t Route Color: %s (%d,%d,%d)", color.first.c_str(), color.second.red, color.second.green, color.second.blue);
   }
   ESP_LOGCONFIG(TAG, "Separator Color: (%d,%d,%d)", this->separator_color_.red, this->separator_color_.green, this->separator_color_.blue);
 

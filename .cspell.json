@@ -15,6 +15,7 @@
         "LOGI",
         "LOGW",
         "Pvariable",
+        "Templatable",
         "Tetris"
     ],
     "ignoreWords": [],
