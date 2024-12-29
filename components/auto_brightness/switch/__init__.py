@@ -8,7 +8,7 @@ from .. import AUTO_BRIGHTNESS_ID, AutoBrightness
 auto_brightness_switch_ns = cg.esphome_ns.namespace("auto_brightness::auto_brightness_switch")
 
 AutoBrightnessSwitch = auto_brightness_switch_ns.class_(
-    "AutoBrightnessSwitch", cg.Component
+    "AutoBrightnessSwitch", switch.Switch, cg.Component
 )
 
 CONFIG_SCHEMA = switch.SWITCH_SCHEMA.extend(
