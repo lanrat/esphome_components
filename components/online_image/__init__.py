@@ -68,6 +68,18 @@ class JPEGFormat(Format):
         cg.add_define("USE_ONLINE_IMAGE_JPEG_SUPPORT")
         cg.add_library("JPEGDEC", None, "https://github.com/bitbank2/JPEGDEC#ca1e0f2")
 
+class WEBPFormat(Format):
+    def __init__(self):
+        super().__init__("WEBP")
+
+    def actions(self):
+        cg.add_define("USE_ONLINE_IMAGE_WEBP_SUPPORT")
+        # cg.add_define("HAVE_CONFIG_H") # https://community.platformio.org/t/undefined-reference-errors-when-using-libwebp-library/21026
+        #cg.add_library("libwebp", None, "https://github.com/webmproject/libwebp#v1.5.0")
+        # form with platformio support
+        # TODO make work with upstream by setting flags here? https://github.com/webmproject/libwebp/compare/main...acvigue:libwebp:main
+        # https://github.com/tidbyt/hdk/blob/main/lib/webp/library.json
+        cg.add_library("libwebp", None, "https://github.com/acvigue/libwebp")
 
 class PNGFormat(Format):
     def __init__(self):
@@ -83,6 +95,7 @@ IMAGE_FORMATS = {
     for x in (
         BMPFormat(),
         JPEGFormat(),
+        WEBPFormat(),
         PNGFormat(),
     )
 }

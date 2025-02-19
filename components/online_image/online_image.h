@@ -25,6 +25,8 @@ enum ImageFormat {
   AUTO,
   /** JPEG format. */
   JPEG,
+  /** WEBP format. */
+  WEBP,
   /** PNG format. */
   PNG,
   /** BMP format. */
