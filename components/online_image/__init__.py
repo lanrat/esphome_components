@@ -11,6 +11,9 @@ from esphome.components.image import (
     get_image_type_enum,
     get_transparency_enum,
 )
+from esphome.components.animation import (
+    Animation_,
+)
 import esphome.config_validation as cv
 from esphome.const import (
     CONF_BUFFER_SIZE,
@@ -25,7 +28,7 @@ from esphome.const import (
     CONF_URL,
 )
 
-AUTO_LOAD = ["image"]
+AUTO_LOAD = ["image", "animation"]
 DEPENDENCIES = ["display", "http_request"]
 CODEOWNERS = ["@guillempages", "@clydebarrow"]
 MULTI_CONF = True
@@ -77,7 +80,7 @@ class WEBPFormat(Format):
         # cg.add_define("HAVE_CONFIG_H") # https://community.platformio.org/t/undefined-reference-errors-when-using-libwebp-library/21026
         #cg.add_library("libwebp", None, "https://github.com/webmproject/libwebp#v1.5.0")
         # form with platformio support
-        # TODO make work with upstream by setting flags here? https://github.com/webmproject/libwebp/compare/main...acvigue:libwebp:main
+        # TODO IDF make work with upstream by setting flags here? https://github.com/webmproject/libwebp/compare/main...acvigue:libwebp:main
         # https://github.com/tidbyt/hdk/blob/main/lib/webp/library.json
         cg.add_library("libwebp", None, "https://github.com/acvigue/libwebp")
 
@@ -101,7 +104,7 @@ IMAGE_FORMATS = {
 }
 IMAGE_FORMATS.update({"JPG": IMAGE_FORMATS["JPEG"]})
 
-OnlineImage = online_image_ns.class_("OnlineImage", cg.PollingComponent, Image_)
+OnlineImage = online_image_ns.class_("OnlineImage", cg.PollingComponent, Image_, Animation_)
 
 # Actions
 SetUrlAction = online_image_ns.class_(

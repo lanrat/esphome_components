@@ -2,6 +2,7 @@
 
 #include "esphome/components/http_request/http_request.h"
 #include "esphome/components/image/image.h"
+#include "esphome/components/animation/animation.h"
 #include "esphome/core/component.h"
 #include "esphome/core/defines.h"
 #include "esphome/core/helpers.h"
@@ -39,7 +40,7 @@ enum ImageFormat {
  * need to re-download or re-decode.
  */
 class OnlineImage : public PollingComponent,
-                    public image::Image,
+                    public animation::Animation,
                     public Parented<esphome::http_request::HttpRequestComponent> {
  public:
   /**
@@ -96,10 +97,13 @@ class OnlineImage : public PollingComponent,
 
   RAMAllocator<uint8_t> allocator_{};
 
-  uint32_t get_buffer_size_() const { return get_buffer_size_(this->buffer_width_, this->buffer_height_); }
-  int get_buffer_size_(int width, int height) const { return (this->get_bpp() * width + 7u) / 8u * height; }
+  uint32_t get_buffer_size_() const { return get_buffer_size_(this->buffer_width_, this->buffer_height_, this->animation_frame_count_); }
+  int get_buffer_size_(int width, int height, int frames) const { return frames * ((this->get_bpp() * width + 7u) / 8u * height); }
 
-  int get_position_(int x, int y) const { return (x + y * this->buffer_width_) * this->get_bpp() / 8; }
+  int get_position_(int x, int y, int frame = 0) const {
+    int frame_offset = this->buffer_frame_size_ * frame;
+    return ((x + y * this->buffer_width_) * this->get_bpp() / 8) + frame_offset;
+  }
 
   ESPHOME_ALWAYS_INLINE bool is_auto_resize_() const { return this->fixed_width_ == 0 || this->fixed_height_ == 0; }
 
@@ -114,9 +118,10 @@ class OnlineImage : public PollingComponent,
    *
    * @param width
    * @param height
+   * @param frames
    * @return 0 if no memory could be allocated, the size of the new buffer otherwise.
    */
-  size_t resize_(int width, int height);
+  size_t resize_(int width, int height, int frames = 1);
 
   /**
    * @brief Draw a pixel into the buffer.
@@ -128,8 +133,9 @@ class OnlineImage : public PollingComponent,
    * @param x Horizontal pixel position.
    * @param y Vertical pixel position.
    * @param color 32 bit color to put into the pixel.
+   * @param frame the frame to draw the image buffer to if animated
    */
-  void draw_pixel_(int x, int y, Color color);
+  void draw_pixel_(int x, int y, Color color, int frame = 0);
 
   void end_connection_();
 
@@ -175,11 +181,13 @@ class OnlineImage : public PollingComponent,
    * decoded images).
    */
   int buffer_height_;
+  /** The calculated size of a single frame for the given width and height in the buffer */
+  int buffer_frame_size_;
 
   time_t start_time_;
 
-  friend bool ImageDecoder::set_size(int width, int height);
-  friend void ImageDecoder::draw(int x, int y, int w, int h, const Color &color);
+  friend bool ImageDecoder::set_size(int width, int height, int frames);
+  friend void ImageDecoder::draw(int x, int y, int w, int h, const Color &color, int frame);
 };
 
 template<typename... Ts> class OnlineImageSetUrlAction : public Action<Ts...> {

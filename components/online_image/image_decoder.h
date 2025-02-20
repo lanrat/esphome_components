@@ -55,9 +55,10 @@ class ImageDecoder {
    *
    * @param width The image's width.
    * @param height The image's height.
+   * @param frames The number of frames in an image if animated.
    * @return true if the image was resized, false otherwise.
    */
-  bool set_size(int width, int height);
+  bool set_size(int width, int height, int frames = 1);
 
   /**
    * @brief Fill a rectangle on the display_buffer using the defined color.
@@ -70,8 +71,9 @@ class ImageDecoder {
    * @param w The width of the rectangle.
    * @param h The height of the rectangle.
    * @param color The fill color
+   * @param frame The frame to write to
    */
-  void draw(int x, int y, int w, int h, const Color &color);
+  void draw(int x, int y, int w, int h, const Color &color, int frame = 0);
 
   bool is_finished() const { return this->decoded_bytes_ == this->download_size_; }
 

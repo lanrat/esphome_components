@@ -14,7 +14,7 @@ namespace online_image {
 class WebpDecoder : public ImageDecoder {
  public:
   /**
-   * @brief Construct a new JPEG Decoder object.
+   * @brief Construct a new WEBP Decoder object.
    *
    * @param display The image to decode the stream into.
    */
@@ -27,8 +27,6 @@ class WebpDecoder : public ImageDecoder {
  protected:
   WebPAnimInfo animation_;
   WebPAnimDecoder *decoder_;
-  //JPEGDEC jpeg_{};
-  //std::unique_ptr<ImageSource> data_;
 };
 
 }  // namespace online_image
