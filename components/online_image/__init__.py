@@ -77,11 +77,6 @@ class WEBPFormat(Format):
 
     def actions(self):
         cg.add_define("USE_ONLINE_IMAGE_WEBP_SUPPORT")
-        # cg.add_define("HAVE_CONFIG_H") # https://community.platformio.org/t/undefined-reference-errors-when-using-libwebp-library/21026
-        #cg.add_library("libwebp", None, "https://github.com/webmproject/libwebp#v1.5.0")
-        # form with platformio support
-        # TODO IDF make work with upstream by setting flags here? https://github.com/webmproject/libwebp/compare/main...acvigue:libwebp:main
-        # https://github.com/tidbyt/hdk/blob/main/lib/webp/library.json
         cg.add_library("libwebp", None, "https://github.com/acvigue/libwebp")
 
 class PNGFormat(Format):
