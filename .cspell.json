@@ -17,7 +17,8 @@
         "LOGW",
         "Pvariable",
         "Templatable",
-        "Tetris"
+        "Tetris",
+        "utcnow"
     ],
     "ignoreWords": [],
     "import": []
