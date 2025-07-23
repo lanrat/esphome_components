@@ -77,7 +77,12 @@ class WEBPFormat(Format):
 
     def actions(self):
         cg.add_define("USE_ONLINE_IMAGE_WEBP_SUPPORT")
-        cg.add_library("libwebp", None, "https://github.com/acvigue/libwebp")
+        cg.add_library("libwebp", None, "https://github.com/lanrat/libwebp.git#esphome1")
+        # Add PlatformIO library options to fix include paths
+        # cg.add_platformio_option("lib_extra_dirs", ".piolibdeps/*/libwebp/src")
+        # cg.add_platformio_option("build_flags", "-I .piolibdeps/*/libwebp/src")
+        # cg.add_platformio_option("build_src_filter", "+<*> -<.piolibdeps/*/libwebp/src/mux/*> -<.piolibdeps/*/libwebp/src/enc/*>")
+        
 
 class PNGFormat(Format):
     def __init__(self):
