@@ -26,7 +26,7 @@ void Transit511::setup() {
     // attempted using a cloudflare to work around this, but cloudflare always responds with HTTP chunked data which
     //  is also currently broken in ESPHome
     // working solution was to create a cloudflare worker that grabs all the data and responds unchunking it.
-    this->http_action_->add_header("Accept-Encoding", "identity"); // disables GZIP
+    this->http_action_->add_request_header("Accept-Encoding", "identity"); // disables GZIP
 
     // HTTP response trigger
     auto http_response_trigger = new http_request::HttpRequestResponseTrigger();
