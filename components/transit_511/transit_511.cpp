@@ -491,5 +491,5 @@ bool isRail(std::string name) {
   return false;
 }
 
-} // namespace game_of_life
+} // namespace transit_511
 } // namespace esphome
