@@ -78,11 +78,35 @@ class WEBPFormat(Format):
     def actions(self):
         cg.add_define("USE_ONLINE_IMAGE_WEBP_SUPPORT")
         cg.add_library("libwebp", None, "https://github.com/lanrat/libwebp.git#esphome1")
+        # https://github.com/koiosdigital/libwebp/compare/main...lanrat:libwebp:esphome1
+        # https://github.com/tronbyt/firmware-esp32/blob/main/lib/webp/library.json
+        # https://discuss.tidbyt.com/t/gif-vs-webp/694
+        # https://community.platformio.org/t/undefined-reference-errors-when-using-libwebp-library/21026
+        #cg.add_library("libwebp", None, "https://github.com/webmproject/libwebp.git#1d86819f49edc8237fa2b844543081bcb8ef8a92")
         # Add PlatformIO library options to fix include paths
-        # cg.add_platformio_option("lib_extra_dirs", ".piolibdeps/*/libwebp/src")
-        # cg.add_platformio_option("build_flags", "-I .piolibdeps/*/libwebp/src")
-        # cg.add_platformio_option("build_src_filter", "+<*> -<.piolibdeps/*/libwebp/src/mux/*> -<.piolibdeps/*/libwebp/src/enc/*>")
+        #cg.add_platformio_option("lib_build_unflags", "-DHAVE_CONFIG_H")
+        # cg.add_platformio_option("build_flags", "-I.")
         
+        # cg.add_platformio_option("lib_build_src_filter", "+<src/**/*.c> +<src/**/*.h>")
+        # cg.add_platformio_option("lib_build_flags", [
+        #     "-I.",
+        #     "-I./src",
+        #     "-I./src/dec/",
+        #     "-I./src/dsp/",
+        #     "-I./src/enc/",
+        #     "-I./src/mux/",
+        #     "-I./src/utils/",
+        #     "-I./src/webp/",
+        #     "-I./dec/",
+        #     "-I./dsp/",
+        #     "-I./enc/",
+        #     "-I./mux/",
+        #     "-I./utils/",
+        #     "-I./webp/",
+        # ])
+        #cg.add_platformio_option("lib_build_include_dir", "./src")
+        #cg.add_platformio_option("lib_build_src_dir", ".")
+
 
 class PNGFormat(Format):
     def __init__(self):
