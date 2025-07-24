@@ -47,7 +47,16 @@ void TetrisAnimation::updateTime(bool force_refresh) {
   auto time = this->rtc_->now();
   if (!time.is_valid()) return;
   if (time.minute != this->last_min_ || time.hour != this->last_hour_) {
-    sprintf(this->time_buffer_, "%02d:%02d", time.hour, time.minute);
+    // Use snprintf for bounds safety
+    int written = snprintf(this->time_buffer_, sizeof(this->time_buffer_), 
+                          "%02d:%02d", time.hour, time.minute);
+    
+    // Verify write was successful and didn't truncate
+    if (written < 0 || written >= sizeof(this->time_buffer_)) {
+      ESP_LOGE(TAG, "Time formatting failed or truncated");
+      return;
+    }
+    
     ESP_LOGD(TAG, "updating Tetris Time to: %s", this->time_buffer_);
     this->tetris_.setTime(this->time_buffer_, force_refresh);
     this->last_hour_ = time.hour;

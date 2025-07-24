@@ -25,7 +25,7 @@ class TetrisAnimation : public Component {
         void updateTime(bool forceRefresh = false);
         TetrisMatrixDraw tetris_;
         time::RealTimeClock *rtc_;
-        char time_buffer_[10];
+        char time_buffer_[16];
         uint8_t last_hour_, last_min_;
 };
 
