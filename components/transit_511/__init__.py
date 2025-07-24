@@ -22,6 +22,7 @@ CONF_ROUTE_COLORS = "route_colors"
 CONF_DIRECTION_COLORS = "direction_colors"
 CONF_SEPARATOR_COLOR = "separator_color"
 CONF_MAX_ETA = "max_eta"
+CONF_ROUTE_FILTER = "route_filter"
 
 transit_511_ns = cg.esphome_ns.namespace("transit_511")
 
@@ -50,6 +51,9 @@ CONFIG_SCHEMA = cv.Schema({
     cv.Optional(CONF_ROUTE_COLORS): COLOR_SCHEMA,
     cv.Optional(CONF_DIRECTION_COLORS): COLOR_SCHEMA,
     cv.Optional(CONF_MAX_ETA, default="60min"): cv.positive_time_period_minutes,
+    cv.Optional(CONF_ROUTE_FILTER): cv.All(
+        cv.ensure_list(cv.string), cv.Length(min=1)
+    ),
 }).extend(cv.COMPONENT_SCHEMA)
 
 async def to_code(config):
@@ -90,3 +94,7 @@ async def to_code(config):
     sources = config[CONF_SOURCES]
     for source in sources:
         cg.add(var.add_source(source))
+    
+    if route_filter := config.get(CONF_ROUTE_FILTER):
+        for route in route_filter:
+            cg.add(var.add_route_filter(route))

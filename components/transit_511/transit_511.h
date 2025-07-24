@@ -6,6 +6,7 @@
 #include "esphome/core/color.h"
 #include <math.h>
 #include <map>
+#include <unordered_set>
 
 namespace esphome {
 namespace transit_511 {
@@ -45,6 +46,7 @@ class Transit511 : public Component {
         float get_setup_priority() const override { return setup_priority::AFTER_WIFI; };
 
         void add_source(std::string url);
+        void add_route_filter(std::string route);
         void set_time(time::RealTimeClock *rtc) { rtc_ = rtc; }
         void set_wifi(wifi::WiFiComponent *wifi);
         void set_refresh(uint32_t refresh_ms) { this->refresh_ms_ = refresh_ms; };
@@ -96,11 +98,13 @@ class Transit511 : public Component {
         void parse_transit_response(std::string body);
         void sortETA();
         void addETAs(std::vector<transitRouteETA> etas);
+        bool is_route_filtered(const std::string& route_name);
         void cleanup_route_ETAs();
         void update_active_routes(uint before_ms);
 
         // settings
         std::vector<source> sources_;
+        std::unordered_set<std::string> route_filter_;
         uint32_t refresh_ms_;
         time::RealTimeClock *rtc_;
         bool running_ = false;

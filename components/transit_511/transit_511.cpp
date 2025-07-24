@@ -201,6 +201,19 @@ void Transit511::add_source(std::string url) {
     this->sources_.push_back({url: url});
 }
 
+void Transit511::add_route_filter(std::string route) {
+    this->route_filter_.insert(route);
+}
+
+bool Transit511::is_route_filtered(const std::string& route_name) {
+    // If no filter is set, allow all routes
+    if (this->route_filter_.empty()) {
+        return false;
+    }
+    // Return true if route should be filtered out (not in the filter list)
+    return this->route_filter_.find(route_name) == this->route_filter_.end();
+}
+
 void Transit511::set_wifi(wifi::WiFiComponent *wifi) {
     this->wifi_ = wifi;
 
@@ -326,6 +339,12 @@ void Transit511::parse_transit_response(std::string body){
 
             //ESP_LOGI(TAG, "Line: %s, Direction: %s, live: %d, eta: [%d] eta_min: %.1f", lineName.c_str(), direction.c_str(), live, eta_timestamp, eta_s/60.0);
 
+            // Skip this route if it's filtered out
+            if (this->is_route_filtered(lineName)) {
+                ESP_LOGE(TAG, "Filtering out Route: '%s'", lineName);
+                continue;
+            }
+
             auto color = this->get_direction_color(direction);
             if (!live) {
                 // make non-live colors darker
@@ -428,6 +447,14 @@ void Transit511::dump_config() {
   ESP_LOGCONFIG(TAG, "max_response_buffer_size: %d", this->max_response_buffer_size_);
   for (const auto source : this->sources_) {
     ESP_LOGCONFIG(TAG, "\t URL: %s", source.url.c_str());
+  }
+  if (!this->route_filter_.empty()) {
+    ESP_LOGCONFIG(TAG, "Route Filter enabled (%d routes):", this->route_filter_.size());
+    for (const auto& route : this->route_filter_) {
+      ESP_LOGCONFIG(TAG, "\t Filtered Route: %s", route.c_str());
+    }
+  } else {
+    ESP_LOGCONFIG(TAG, "Route Filter: disabled (showing all routes)");
   }
   for (const auto color : this->direction_colors_) {
     ESP_LOGCONFIG(TAG, "\t Direction Color: %s (%d,%d,%d)", color.first.c_str(), color.second.red, color.second.green, color.second.blue);
