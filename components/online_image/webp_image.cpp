@@ -23,15 +23,32 @@ namespace online_image {
  * @param frame The frame to draw the image to
  */
 void draw_frame(ImageDecoder *decoder, uint8_t *pix, uint32_t width, uint32_t height, int frame) {
+  // Validate inputs
+  if (!decoder || !pix || width == 0 || height == 0) {
+    ESP_LOGE(TAG, "Invalid parameters to draw_frame");
+    return;
+  }
+
   static int ixR = 0;
   static int ixG = 1;
   static int ixB = 2;
   static int ixA = 3;
   static int channels = 4;
 
+  // Calculate total expected buffer size
+  size_t expected_size = static_cast<size_t>(width) * height * channels;
+
   for (unsigned int y = 0; y < height; y++) {
     for (unsigned int x = 0; x < width; x++) {
-      const uint8_t *p = &pix[(y * width + x) * channels];
+      size_t pixel_offset = (y * width + x) * channels;
+      
+      // Bounds check: Prevent buffer overread
+      if (pixel_offset + channels > expected_size) {
+        ESP_LOGE(TAG, "Pixel buffer access would exceed bounds at (%u,%u)", x, y);
+        return;
+      }
+      
+      const uint8_t *p = &pix[pixel_offset];
       uint8_t r = p[ixR];
       uint8_t g = p[ixG];
       uint8_t b = p[ixB];
@@ -103,6 +120,14 @@ int HOT WebpDecoder::decode(uint8_t *buffer, size_t size) {
     int timestamp;
     if (!WebPAnimDecoderGetNext(this->decoder_, &pix, &timestamp)) {
       ESP_LOGE(TAG,"error parsing webp frame %u/%u", frame, animation_.frame_count);
+      WebPAnimDecoderDelete(this->decoder_);
+      this->decoder_ = NULL;
+      return DECODE_ERROR_UNSUPPORTED_FORMAT;
+    }
+
+    // Validate pix pointer before use
+    if (!pix) {
+      ESP_LOGE(TAG, "WebP decoder returned null pixel buffer for frame %u", frame);
       WebPAnimDecoderDelete(this->decoder_);
       this->decoder_ = NULL;
       return DECODE_ERROR_UNSUPPORTED_FORMAT;

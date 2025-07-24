@@ -272,6 +272,13 @@ void OnlineImage::draw_pixel_(int x, int y, Color color, int frame) {
     return;
   }
   uint32_t pos = this->get_position_(x, y, frame);
+  
+  // Additional safety check for calculated position
+  size_t buffer_size = this->get_buffer_size_();
+  if (pos >= buffer_size) {
+    ESP_LOGE(TAG, "Calculated position %u exceeds buffer size %zu", pos, buffer_size);
+    return;
+  }
   switch (this->type_) {
     case ImageType::IMAGE_TYPE_BINARY: {
       const uint32_t width_8 = ((this->width_ + 7u) / 8u) * 8u;
@@ -307,6 +314,12 @@ void OnlineImage::draw_pixel_(int x, int y, Color color, int frame) {
     case ImageType::IMAGE_TYPE_RGB565: {
       this->map_chroma_key(color);
       uint16_t col565 = display::ColorUtil::color_to_565(color);
+      // Check bounds for multi-byte access
+      size_t bytes_needed = this->transparency_ == image::TRANSPARENCY_ALPHA_CHANNEL ? 3 : 2;
+      if (pos + bytes_needed > buffer_size) {
+        ESP_LOGE(TAG, "RGB565 pixel write would exceed buffer bounds");
+        return;
+      }
       this->buffer_[pos + 0] = static_cast<uint8_t>((col565 >> 8) & 0xFF);
       this->buffer_[pos + 1] = static_cast<uint8_t>(col565 & 0xFF);
       if (this->transparency_ == image::TRANSPARENCY_ALPHA_CHANNEL) {
@@ -316,6 +329,12 @@ void OnlineImage::draw_pixel_(int x, int y, Color color, int frame) {
     }
     case ImageType::IMAGE_TYPE_RGB: {
       this->map_chroma_key(color);
+      // Check bounds for multi-byte access
+      size_t bytes_needed = this->transparency_ == image::TRANSPARENCY_ALPHA_CHANNEL ? 4 : 3;
+      if (pos + bytes_needed > buffer_size) {
+        ESP_LOGE(TAG, "RGB pixel write would exceed buffer bounds");
+        return;
+      }
       this->buffer_[pos + 0] = color.r;
       this->buffer_[pos + 1] = color.g;
       this->buffer_[pos + 2] = color.b;
