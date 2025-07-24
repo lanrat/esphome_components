@@ -25,7 +25,7 @@ void GameOfLife::reset() {
   this->mutex_.lock();
   for (int r = 0; r < this->rows; r++) {
     for (int c = 0; c < this->cols; c++) {
-      num = random(1, 100);
+      num = gol_random(1, 100);
       if (num < this->starting_density_) {
         this->current_state_[r][c] = AGE_1;
         this->alive_++;
@@ -126,18 +126,19 @@ void GameOfLife::spark_of_life() {
   int num;
   bool value;
 
+  // Lock once for the entire operation to avoid repeated lock/unlock in nested loops
+  this->mutex_.lock();
   for (int r = 0; r < this->rows; r++) {
     for (int c = 0; c < this->cols; c++) {
-      num = random(1, 100);
+      num = gol_random(1, 100);
 
       value = num >= 90;
       if (value == 1 && this->current_state_[r][c] == AGE_DEAD) {              // only add new points, don't remove any
-        this->mutex_.lock();
         this->current_state_[r][c] = AGE_1;
-        this->mutex_.unlock();
       }
     }
   }
+  this->mutex_.unlock();
 }
 
 void GameOfLife::nextIteration() {

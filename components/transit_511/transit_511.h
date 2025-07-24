@@ -104,6 +104,7 @@ class Transit511 : public Component {
         uint32_t refresh_ms_;
         time::RealTimeClock *rtc_;
         bool running_ = false;
+        size_t pending_requests_ = 0;
         uint max_eta_ms_ = UINT_MAX;
 
         // transit data

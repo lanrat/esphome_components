@@ -7,7 +7,7 @@
 // modeled after
 // https://github.com/Bodmer/TFT_eSPI/blob/master/TFT_eSPI.cpp#L4246
 
-#define random(minimum_number, max_number) rand() % (max_number + 1) + minimum_number
+#define aa_random(minimum_number, max_number) (rand() % ((max_number) - (minimum_number) + 1) + (minimum_number))
 
 /***************************************************************************************
 ** Function name:           sqrt_fraction (private function)
@@ -44,7 +44,7 @@ inline uint8_t sqrt_fraction(uint32_t num) {
 ***************************************************************************************/
 esphome::Color alphaBlend(uint8_t alpha, esphome::Color fgc, esphome::Color bgc, uint8_t dither) {
   if (dither) {
-    int16_t alphaDither = (int16_t)alpha - dither + random(0, 2*dither+1); // +/-dither randomized
+    int16_t alphaDither = (int16_t)alpha - dither + aa_random(0, 2*dither+1); // +/-dither randomized
     alpha = (uint8_t)alphaDither;
     if (alphaDither <  0) alpha = 0;
     if (alphaDither >255) alpha = 255;

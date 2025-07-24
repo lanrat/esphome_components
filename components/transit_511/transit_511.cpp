@@ -49,14 +49,31 @@ void Transit511::http_response_callback(std::shared_ptr<http_request::HttpContai
 
     if (!http_request::is_success(response->status_code)) {
         ESP_LOGE(TAG, "HTTP Error code: %d", response->status_code);
-        return;
+    } else {
+        this->parse_transit_response(body);
     }
-
-    this->parse_transit_response(body);
+    
+    // Decrement pending requests and clear running flag when all complete
+    if (this->pending_requests_ > 0) {
+        this->pending_requests_--;
+        if (this->pending_requests_ == 0) {
+            this->running_ = false;
+            ESP_LOGD(TAG, "All HTTP requests completed");
+        }
+    }
 }
 
 void Transit511::http_error_callback() {
     ESP_LOGE(TAG, "HTTP Error!");
+    
+    // Also handle error case for pending request tracking
+    if (this->pending_requests_ > 0) {
+        this->pending_requests_--;
+        if (this->pending_requests_ == 0) {
+            this->running_ = false;
+            ESP_LOGD(TAG, "All HTTP requests completed (with errors)");
+        }
+    }
 }
 
 void Transit511::set_max_response_buffer_size(size_t max_response_buffer_size) {
@@ -111,6 +128,8 @@ void Transit511::refresh(bool force) {
 
     ESP_LOGD(TAG, "Refreshing Data");
     this->running_ = true;
+    this->pending_requests_ = this->sources_.size();
+    
     for (const auto source : this->sources_) {
         ESP_LOGD(TAG, "Requesting: %s", source.url.c_str());
         this->http_action_->set_url(source.url.c_str());
@@ -121,7 +140,8 @@ void Transit511::refresh(bool force) {
     
     // set next time to run
     this->set_next_call_ns_();
-    this->running_ = false;
+    
+    // Note: running_ will be set to false when all HTTP requests complete
 }
 
 
@@ -154,14 +174,25 @@ void Transit511::cleanup_route_ETAs() {
     time_t now = this->rtc_->now().timestamp;
     // if a route or source only has ETAs in the past, remove it
     // routes
-    for (const auto &route : this->routes) {
+    
+    // Use safe iteration pattern to avoid iterator invalidation
+    auto it = this->routes.begin();
+    while (it != this->routes.end()) {
+        bool should_remove = false;
+        
         // remove if empty
-        if (route.second.empty()) {
-            this->routes.erase(route.first);
+        if (it->second.empty()) {
+            should_remove = true;
         }
         // remove route if last ETA is in past
-        if (route.second.back()->ETA < now) {
-            this->routes.erase(route.first);
+        else if (it->second.back()->ETA < now) {
+            should_remove = true;
+        }
+        
+        if (should_remove) {
+            it = this->routes.erase(it);  // erase returns next valid iterator
+        } else {
+            ++it;
         }
     }
 }
@@ -185,12 +216,26 @@ void Transit511::set_wifi(wifi::WiFiComponent *wifi) {
 void Transit511::parse_transit_response(std::string body){
     //ESP_LOGD(TAG, "HTTP Response Body len: %d", body.length());
 
+    // Validate response size to prevent memory exhaustion
+    const size_t MAX_RESPONSE_SIZE = 1024 * 1024; // 1MB limit
+    if (body.size() > MAX_RESPONSE_SIZE) {
+        ESP_LOGE(TAG, "Response too large: %zu bytes (limit: %zu)", body.size(), MAX_RESPONSE_SIZE);
+        return;
+    }
+    
+    if (body.empty()) {
+        ESP_LOGE(TAG, "Empty response body");
+        return;
+    }
+
     size_t start = body.find_first_of('{');
     if (start == std::string::npos) {
         // not found
         ESP_LOGE(TAG, "unable to find '{' to start json parsing from string size: %d", body.size());
         if (body.size() > 0) {
-            ESP_LOGE(TAG, "body[:100]: %s", body.substr(0, 100));
+            // Safe substring with bounds checking
+            size_t preview_len = std::min(body.size(), static_cast<size_t>(100));
+            ESP_LOGE(TAG, "body[:100]: %.*s", static_cast<int>(preview_len), body.c_str());
         }
         return;
     }
@@ -208,14 +253,23 @@ void Transit511::parse_transit_response(std::string body){
         */
 
         auto response_ts_str = root["ServiceDelivery"]["StopMonitoringDelivery"]["ResponseTimestamp"].as<const char*>();
+        if (response_ts_str == nullptr) {
+            ESP_LOGE(TAG, "ResponseTimestamp field missing from json");
+            return false;
+        }
         auto response_ts =  timeFromJSON(response_ts_str);
         if (response_ts == -1) {
-            ESP_LOGE(TAG, "ResponseTimestamp missing in json");
+            ESP_LOGE(TAG, "ResponseTimestamp invalid in json: '%s'", response_ts_str);
             return false;
         }
         //ESP_LOGD(TAG, "API Data timestamp: %.19s", ctime(&response_ts));
 
         JsonArray stopVisits = root["ServiceDelivery"]["StopMonitoringDelivery"]["MonitoredStopVisit"];
+        if (stopVisits.isNull()) {
+            ESP_LOGE(TAG, "MonitoredStopVisit array missing from json");
+            return false;
+        }
+        
         std::vector<transitRouteETA> etas;
         for(const JsonObject& value : stopVisits) {
             // extract vars from json
@@ -225,11 +279,23 @@ void Transit511::parse_transit_response(std::string body){
             auto etaStr = value["MonitoredVehicleJourney"]["MonitoredCall"]["ExpectedArrivalTime"].as<const char*>();
             auto recordedTime = value["RecordedAtTime"].as<const char*>();
     
+            // Validate required fields
+            if (lineName.empty()) {
+                ESP_LOGE(TAG, "LineRef missing in json");
+                continue;
+            }
+            if (direction.empty()) {
+                ESP_LOGE(TAG, "DirectionRef missing in json");
+                continue;
+            }
+            if (reference.empty()) {
+                ESP_LOGE(TAG, "MonitoringRef missing in json");
+                continue;
+            }
             if (etaStr == NULL) {
                 ESP_LOGE(TAG, "ExpectedArrivalTime missing in json");
                 continue;
             }
-
             if (recordedTime == NULL) {
                 ESP_LOGE(TAG, "RecordedAtTime missing in json");
                 continue;
@@ -273,6 +339,7 @@ void Transit511::parse_transit_response(std::string body){
                 .Direction = direction,
                 .RecordedAtTime = recorded_timestamp,
                 .ETA = eta_timestamp,
+                .ResponseTimestamp = response_ts,
                 .live = live,
                 .rail = isRail(lineName),
                 .directionColor = color,

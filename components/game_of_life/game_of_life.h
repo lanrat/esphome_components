@@ -9,7 +9,7 @@
 #define AGE_2 2
 #define AGE_n 3
 
-#define random(minimum_number, max_number)  rand() % (max_number + 1) + minimum_number
+#define gol_random(minimum_number, max_number)  (rand() % ((max_number) - (minimum_number) + 1) + (minimum_number))
 
 namespace esphome {
 namespace game_of_life {
