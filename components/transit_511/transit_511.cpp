@@ -45,6 +45,7 @@ void Transit511::setup() {
 }
 
 void Transit511::http_response_callback(std::shared_ptr<http_request::HttpContainer> response, std::string & body) {
+    App.feed_wdt(); // feed watchdog
     ESP_LOGD(TAG, "response finished in %dms content length: %d, code: %d", response->duration_ms, response->content_length, response->status_code);
 
     if (!http_request::is_success(response->status_code)) {
@@ -58,12 +59,14 @@ void Transit511::http_response_callback(std::shared_ptr<http_request::HttpContai
         this->pending_requests_--;
         if (this->pending_requests_ == 0) {
             this->running_ = false;
+            this->current_request_index_ = 0;  // Reset for next refresh
             ESP_LOGD(TAG, "All HTTP requests completed");
         }
     }
 }
 
 void Transit511::http_error_callback() {
+    App.feed_wdt(); // feed watchdog
     ESP_LOGE(TAG, "HTTP Error!");
     
     // Also handle error case for pending request tracking
@@ -71,6 +74,7 @@ void Transit511::http_error_callback() {
         this->pending_requests_--;
         if (this->pending_requests_ == 0) {
             this->running_ = false;
+            this->current_request_index_ = 0;  // Reset for next refresh
             ESP_LOGD(TAG, "All HTTP requests completed (with errors)");
         }
     }
@@ -93,6 +97,17 @@ void Transit511::loop() {
             update_active_last_ms = ms;
             this->update_active_routes(this->max_eta_ms_);
         }
+    }
+
+    // Process one HTTP request per loop() call if we have pending requests
+    if (this->running_ && this->current_request_index_ < this->sources_.size()) {
+        const auto& source = this->sources_[this->current_request_index_];
+        ESP_LOGD(TAG, "Requesting (%d/%d): %s", this->current_request_index_ + 1, this->sources_.size(), source.url.c_str());
+        this->http_action_->set_url(source.url.c_str());
+        this->http_action_->play();
+        this->current_request_index_++;
+        App.feed_wdt();
+        return; // Exit loop() to let system breathe
     }
 
     this->refresh();
@@ -129,13 +144,11 @@ void Transit511::refresh(bool force) {
     ESP_LOGD(TAG, "Refreshing Data");
     this->running_ = true;
     this->pending_requests_ = this->sources_.size();
+    this->current_request_index_ = 0;  // Reset request index
     
-    for (const auto source : this->sources_) {
-        ESP_LOGD(TAG, "Requesting: %s", source.url.c_str());
-        this->http_action_->set_url(source.url.c_str());
-        this->http_action_->play();
-    }
-
+    // Don't make requests here - let loop() handle them one at a time
+    // This prevents blocking the main loop for too long
+    
     this->cleanup_route_ETAs();
     
     // set next time to run
@@ -223,7 +236,6 @@ void Transit511::set_wifi(wifi::WiFiComponent *wifi) {
     // set trigger
     auto wifi_connect_automation = new Automation<>(this->wifi_->get_connect_trigger());
     wifi_connect_automation->add_actions({wifi_connect_lambda});
-
 }
 
 void Transit511::parse_transit_response(std::string body){
@@ -285,6 +297,7 @@ void Transit511::parse_transit_response(std::string body){
         
         std::vector<transitRouteETA> etas;
         for(const JsonObject& value : stopVisits) {
+            App.feed_wdt(); // feed watchdog
             // extract vars from json
             auto lineName = value["MonitoredVehicleJourney"]["LineRef"].as<std::string>();
             auto direction = value["MonitoredVehicleJourney"]["DirectionRef"].as<std::string>();
@@ -392,8 +405,8 @@ void Transit511::sortETA() {
 
     // iterate over all routes
     for (auto const& route_stop : this->reference_routes) {
+        App.feed_wdt(); // feed watchdog
         // iterate over all ETAs
-
         for(const auto& eta : route_stop.second) {
             // add to vector of all ETAs
             //newETA.push_back(&eta);
@@ -406,7 +419,7 @@ void Transit511::sortETA() {
 
     // sort all lines (with directions merged)
     for (auto & route : newRoutes) {
-
+        App.feed_wdt(); // feed watchdog
         // TODO do a form of insertion sort.
         sort(route.second.begin(), route.second.end(), etaCmp);
         route.second.shrink_to_fit();

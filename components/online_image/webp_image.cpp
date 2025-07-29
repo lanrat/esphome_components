@@ -116,6 +116,7 @@ int HOT WebpDecoder::decode(uint8_t *buffer, size_t size) {
 
   // iterate over all frames
   for (uint frame = 0; frame < animation_.frame_count; frame++) {
+    App.feed_wdt(); // feed watchdog
     uint8_t *pix;
     int timestamp;
     if (!WebPAnimDecoderGetNext(this->decoder_, &pix, &timestamp)) {
