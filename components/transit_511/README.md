@@ -33,7 +33,7 @@ time:
 
 http_request:
   verify_ssl: false
-  timeout: 5s
+  timeout: 3s
   watchdog_timeout: 10s
   id: id_http
 

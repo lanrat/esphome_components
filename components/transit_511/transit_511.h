@@ -111,6 +111,10 @@ class Transit511 : public Component {
         size_t pending_requests_ = 0;
         size_t current_request_index_ = 0;
         uint max_eta_ms_ = UINT_MAX;
+        uint32_t consecutive_errors_ = 0;
+        uint32_t last_error_ms_ = 0;
+        uint32_t request_start_ms_ = 0;
+        uint32_t wifi_connected_ms_ = 0;
 
         // transit data
         // map of all routes per stop to sorted ETAs
