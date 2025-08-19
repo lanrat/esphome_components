@@ -26,6 +26,10 @@ void Transit511::setup() {
     // We reduce timeout to minimize impact but can't fully fix the library's blocking behavior
     this->http_->set_timeout(3000);  // Further reduced to 3s to minimize blocking
     
+    // Set watchdog timeout for HTTP operations to prevent crashes
+    // This gives the HTTP client more time before the watchdog triggers
+    this->http_->set_watchdog_timeout(15000);  // 15 seconds for HTTP operations
+    
     // WARNING: ESP32 Arduino HTTPClient contains blocking delay(10) calls in handleHeaderResponse
     // that can accumulate and trigger watchdog timeouts. Consider using async HTTP if crashes persist.
 
