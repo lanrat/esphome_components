@@ -18,6 +18,7 @@
         "LOGW",
         "NOWL",
         "Pvariable",
+        "rssi",
         "sntp",
         "Templatable",
         "Tetris",
