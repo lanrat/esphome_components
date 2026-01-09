@@ -4,7 +4,10 @@
 #include "esphome/core/base_automation.h"
 
 #include "esphome/components/json/json_util.h"
-#include <WiFi.h>
+
+#ifdef USE_ESP_IDF
+#include "esp_heap_caps.h"
+#endif
 
 namespace esphome {
 namespace transit_511 {
@@ -186,7 +189,7 @@ void Transit511::loop() {
         }
         
         // Check WiFi signal strength to avoid attempts on weak connections
-        int8_t rssi = WiFi.RSSI();
+        int8_t rssi = this->wifi_->wifi_rssi();
         if (rssi < -85) {  // Very weak signal
             ESP_LOGW(TAG, "WiFi signal too weak (RSSI: %d dBm), delaying request", rssi);
             App.feed_wdt();
@@ -406,7 +409,11 @@ void Transit511::parse_transit_response(std::string body){
     //ESP_LOGD(TAG, "HTTP Response Body len: %d", body.length());
 
     // Check available heap before processing
+#ifdef USE_ESP_IDF
+    size_t free_heap = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
+#else
     size_t free_heap = ESP.getFreeHeap();
+#endif
     const size_t MIN_FREE_HEAP = 20000; // Require at least 20KB free
     if (free_heap < MIN_FREE_HEAP) {
         ESP_LOGE(TAG, "Low memory: %zu bytes free (minimum: %zu)", free_heap, MIN_FREE_HEAP);
