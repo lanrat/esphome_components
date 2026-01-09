@@ -15,11 +15,9 @@ TYPES = {CONF_IAQ_ACCURACY: "set_iaq_accuracy_text_sensor"}
 CONFIG_SCHEMA = cv.Schema(
     {
         cv.GenerateID(CONF_BME680_BSEC_ID): cv.use_id(BME680BSECComponent),
-        cv.Optional(CONF_IAQ_ACCURACY): text_sensor.TEXT_SENSOR_SCHEMA.extend(
-            {
-                cv.GenerateID(): cv.declare_id(text_sensor.TextSensor),
-                cv.Optional(CONF_ICON, default=ICON_ACCURACY): cv.icon,
-            }
+        cv.Optional(CONF_IAQ_ACCURACY): text_sensor.text_sensor_schema(
+            text_sensor.TextSensor,
+            icon=ICON_ACCURACY,
         ),
     }
 )

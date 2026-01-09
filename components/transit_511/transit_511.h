@@ -87,7 +87,7 @@ class Transit511 : public Component {
         bool is_route_active(std::string route){ return this->active_[route]; };
 
     protected:
-        void http_response_callback(std::shared_ptr<http_request::HttpContainer> response, std::string & body);
+        void http_response_callback(std::shared_ptr<http_request::HttpContainer> response);
         void http_error_callback();
         http_request::HttpRequestSendAction<> *http_action_;
         size_t max_response_buffer_size_ = 0;

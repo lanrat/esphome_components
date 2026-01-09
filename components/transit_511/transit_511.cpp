@@ -19,17 +19,15 @@ void Transit511::setup() {
     if (this->max_response_buffer_size_ > 0) {
         this->http_action_->set_max_response_buffer_size(this->max_response_buffer_size_);
     }
-    this->http_action_->set_capture_response(true);
-    
     // Set HTTP timeout to prevent watchdog timeouts
     // CRITICAL: HTTPClient has blocking delays that cause watchdog timeouts
     // We reduce timeout to minimize impact but can't fully fix the library's blocking behavior
     this->http_->set_timeout(3000);  // Further reduced to 3s to minimize blocking
-    
+
     // Set watchdog timeout for HTTP operations to prevent crashes
     // This gives the HTTP client more time before the watchdog triggers
     this->http_->set_watchdog_timeout(15000);  // 15 seconds for HTTP operations
-    
+
     // WARNING: ESP32 Arduino HTTPClient contains blocking delay(10) calls in handleHeaderResponse
     // that can accumulate and trigger watchdog timeouts. Consider using async HTTP if crashes persist.
 
@@ -37,27 +35,25 @@ void Transit511::setup() {
     // NOTE: the current esp-arduino API does not allow overriding this. Setting this header just adds a 2nd value
     // the upstream (511.org) does not parse it correctly, and responds with gzip data
     // attempted using a cloudflare to work around this, but cloudflare always responds with HTTP chunked data which
-    //  is also currently broken in ESPHome
+    // is also currently broken in ESPHome
     // working solution was to create a cloudflare worker that grabs all the data and responds unchunking it.
     this->http_action_->add_request_header("Accept-Encoding", "identity"); // disables GZIP
 
-    // HTTP response trigger
-    auto http_response_trigger = new http_request::HttpRequestResponseTrigger();
-    this->http_action_->register_response_trigger(http_response_trigger);
-    auto http_response_trigger_automation = new Automation<std::shared_ptr<http_request::HttpContainer>, std::string &>(http_response_trigger);
-    auto *http_response_lambda = new LambdaAction<std::shared_ptr<http_request::HttpContainer>, std::string &>
-    ([=](std::shared_ptr<http_request::HttpContainer> response, std::string & body) -> void { this->http_response_callback(response, body); });
+    // HTTP response trigger - get_success_trigger() returns container only, we read body manually
+    auto http_response_trigger = this->http_action_->get_success_trigger();
+    auto http_response_trigger_automation = new Automation<std::shared_ptr<http_request::HttpContainer>>(http_response_trigger);
+    auto *http_response_lambda = new LambdaAction<std::shared_ptr<http_request::HttpContainer>>
+    ([this](const std::shared_ptr<http_request::HttpContainer> &response) -> void { this->http_response_callback(response); });
     http_response_trigger_automation->add_actions({http_response_lambda});
 
-    // HTTP error trigger
-    auto http_error_trigger = new Trigger<>();
-    this->http_action_->register_error_trigger(http_error_trigger);
+    // HTTP error trigger - use get_error_trigger() instead of register_error_trigger()
+    auto http_error_trigger = this->http_action_->get_error_trigger();
     auto http_error_trigger_automation = new Automation<>(http_error_trigger);
-    auto http_error_lambda = new LambdaAction<>([=]() -> void { this->http_error_callback(); });
+    auto http_error_lambda = new LambdaAction<>([this]() -> void { this->http_error_callback(); });
     http_error_trigger_automation->add_actions({http_error_lambda});
 }
 
-void Transit511::http_response_callback(std::shared_ptr<http_request::HttpContainer> response, std::string & body) {
+void Transit511::http_response_callback(std::shared_ptr<http_request::HttpContainer> response) {
     App.feed_wdt(); // feed watchdog
     ESP_LOGD(TAG, "response finished in %dms content length: %d, code: %d", response->duration_ms, response->content_length, response->status_code);
 
@@ -66,6 +62,33 @@ void Transit511::http_response_callback(std::shared_ptr<http_request::HttpContai
         this->consecutive_errors_++;
         this->last_error_ms_ = millis();
     } else {
+        // Read response body from container
+        std::string body;
+        size_t content_length = response->content_length;
+        size_t max_length = this->max_response_buffer_size_ > 0
+            ? std::min(content_length, this->max_response_buffer_size_)
+            : content_length;
+
+        if (max_length > 0) {
+            RAMAllocator<uint8_t> allocator;
+            uint8_t *buf = allocator.allocate(max_length);
+            if (buf != nullptr) {
+                size_t read_index = 0;
+                while (response->get_bytes_read() < max_length) {
+                    App.feed_wdt();
+                    int read = response->read(buf + read_index, std::min<size_t>(max_length - read_index, 512));
+                    if (read <= 0) {
+                        break;
+                    }
+                    yield();
+                    read_index += read;
+                }
+                body.reserve(read_index);
+                body.assign((char *) buf, read_index);
+                allocator.deallocate(buf, max_length);
+            }
+        }
+
         this->parse_transit_response(body);
         this->consecutive_errors_ = 0; // Reset error counter on success
     }
@@ -365,7 +388,7 @@ void Transit511::set_wifi(wifi::WiFiComponent *wifi) {
     this->wifi_ = wifi;
 
     // define trigger
-    auto wifi_connect_lambda = new LambdaAction<>([=]() -> void { 
+    auto wifi_connect_lambda = new LambdaAction<>([this]() -> void {
         // Track when WiFi connects and wait before making requests
         this->wifi_connected_ms_ = millis();
         ESP_LOGD(TAG, "WiFi connected, will wait 3s before making requests");

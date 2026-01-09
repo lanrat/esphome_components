@@ -194,7 +194,7 @@ template<typename... Ts> class OnlineImageSetUrlAction : public Action<Ts...> {
  public:
   OnlineImageSetUrlAction(OnlineImage *parent) : parent_(parent) {}
   TEMPLATABLE_VALUE(std::string, url)
-  void play(Ts... x) override {
+  void play(const Ts &...x) override {
     this->parent_->set_url(this->url_.value(x...));
     this->parent_->update();
   }
@@ -206,7 +206,7 @@ template<typename... Ts> class OnlineImageSetUrlAction : public Action<Ts...> {
 template<typename... Ts> class OnlineImageReleaseAction : public Action<Ts...> {
  public:
   OnlineImageReleaseAction(OnlineImage *parent) : parent_(parent) {}
-  void play(Ts... x) override { this->parent_->release(); }
+  void play(const Ts &...x) override { this->parent_->release(); }
 
  protected:
   OnlineImage *parent_;

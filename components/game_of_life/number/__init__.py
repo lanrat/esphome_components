@@ -11,12 +11,15 @@ GameOfLifeNumber = game_of_life_number_ns.class_(
     "GameOfLifeNumber", cg.Component
 )
 
-CONFIG_SCHEMA = number.NUMBER_SCHEMA.extend(
-    {
-        cv.GenerateID(): cv.declare_id(GameOfLifeNumber),
-        cv.Required(GAME_OF_LIFE_ID): cv.use_id(GameOfLife),
-    }
-).extend(cv.COMPONENT_SCHEMA)
+CONFIG_SCHEMA = (
+    number.number_schema(GameOfLifeNumber)
+    .extend(
+        {
+            cv.Required(GAME_OF_LIFE_ID): cv.use_id(GameOfLife),
+        }
+    )
+    .extend(cv.COMPONENT_SCHEMA)
+)
 
 async def to_code(config):
     game_of_life = await cg.get_variable(config[GAME_OF_LIFE_ID])
