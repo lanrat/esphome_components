@@ -5,10 +5,6 @@
 
 #include "esphome/components/json/json_util.h"
 
-#ifdef USE_ESP_IDF
-#include "esp_heap_caps.h"
-#endif
-
 namespace esphome {
 namespace transit_511 {
 
@@ -22,25 +18,12 @@ void Transit511::setup() {
     if (this->max_response_buffer_size_ > 0) {
         this->http_action_->set_max_response_buffer_size(this->max_response_buffer_size_);
     }
-    // Set HTTP timeout to prevent watchdog timeouts
-    // CRITICAL: HTTPClient has blocking delays that cause watchdog timeouts
-    // We reduce timeout to minimize impact but can't fully fix the library's blocking behavior
-    this->http_->set_timeout(3000);  // Further reduced to 3s to minimize blocking
 
-    // Set watchdog timeout for HTTP operations to prevent crashes
-    // This gives the HTTP client more time before the watchdog triggers
-    this->http_->set_watchdog_timeout(15000);  // 15 seconds for HTTP operations
+    this->http_->set_timeout(10000);  // 10 second timeout
+    this->http_->set_watchdog_timeout(15000);  // 15 seconds watchdog for HTTP operations
 
-    // WARNING: ESP32 Arduino HTTPClient contains blocking delay(10) calls in handleHeaderResponse
-    // that can accumulate and trigger watchdog timeouts. Consider using async HTTP if crashes persist.
-
-    // https://github.com/espressif/arduino-esp32/pull/9863
-    // NOTE: the current esp-arduino API does not allow overriding this. Setting this header just adds a 2nd value
-    // the upstream (511.org) does not parse it correctly, and responds with gzip data
-    // attempted using a cloudflare to work around this, but cloudflare always responds with HTTP chunked data which
-    // is also currently broken in ESPHome
-    // working solution was to create a cloudflare worker that grabs all the data and responds unchunking it.
-    this->http_action_->add_request_header("Accept-Encoding", "identity"); // disables GZIP
+    // Disable GZIP to simplify response handling
+    this->http_action_->add_request_header("Accept-Encoding", "identity");
 
     // HTTP response trigger - get_success_trigger() returns container only, we read body manually
     auto http_response_trigger = this->http_action_->get_success_trigger();
@@ -57,8 +40,8 @@ void Transit511::setup() {
 }
 
 void Transit511::http_response_callback(std::shared_ptr<http_request::HttpContainer> response) {
-    App.feed_wdt(); // feed watchdog
-    ESP_LOGD(TAG, "response finished in %dms content length: %d, code: %d", response->duration_ms, response->content_length, response->status_code);
+    ESP_LOGD(TAG, "response finished in %dms content length: %zu, code: %d",
+             response->duration_ms, response->content_length, response->status_code);
 
     if (!http_request::is_success(response->status_code)) {
         ESP_LOGE(TAG, "HTTP Error code: %d", response->status_code);
@@ -78,15 +61,12 @@ void Transit511::http_response_callback(std::shared_ptr<http_request::HttpContai
             if (buf != nullptr) {
                 size_t read_index = 0;
                 while (response->get_bytes_read() < max_length) {
-                    App.feed_wdt();
-                    int read = response->read(buf + read_index, std::min<size_t>(max_length - read_index, 512));
+                    int read = response->read(buf + read_index, std::min<size_t>(max_length - read_index, 4096));
                     if (read <= 0) {
                         break;
                     }
-                    yield();
                     read_index += read;
                 }
-                body.reserve(read_index);
                 body.assign((char *) buf, read_index);
                 allocator.deallocate(buf, max_length);
             }
@@ -109,7 +89,6 @@ void Transit511::http_response_callback(std::shared_ptr<http_request::HttpContai
 }
 
 void Transit511::http_error_callback() {
-    App.feed_wdt(); // feed watchdog
     ESP_LOGE(TAG, "HTTP Error!");
     this->consecutive_errors_++;
     this->last_error_ms_ = millis();
@@ -160,77 +139,52 @@ void Transit511::loop() {
         }
     }
 
-    // Add delay between HTTP requests to prevent blocking
+    // Small delay between HTTP requests to avoid overwhelming the network stack
     static uint32_t last_request_ms = 0;
-    // INCREASED DELAY: HTTPClient's blocking delays accumulate, need more spacing
-    const uint32_t REQUEST_DELAY_MS = 500; // Increased from 100ms to 500ms to prevent watchdog
-    
+    const uint32_t REQUEST_DELAY_MS = 100;
+
     // Process one HTTP request per loop() call if we have pending requests
     if (this->running_ && this->current_request_index_ < this->sources_.size()) {
-        // Ensure minimum delay between requests
         uint32_t now_ms = millis();
         if (now_ms - last_request_ms < REQUEST_DELAY_MS) {
-            App.feed_wdt(); // Feed watchdog while waiting
-            return; // Exit to let system breathe
+            return;
         }
-        
+
         // Check WiFi is still connected before attempting request
-        // This prevents blocking on connection attempts when WiFi is down
         if (!this->wifi_->is_connected()) {
             ESP_LOGW(TAG, "WiFi disconnected during request sequence, aborting");
             this->running_ = false;
             this->pending_requests_ = 0;
             this->current_request_index_ = 0;
             this->request_start_ms_ = 0;
-            this->wifi_connected_ms_ = 0;  // Reset WiFi connection time
+            this->wifi_connected_ms_ = 0;
             this->consecutive_errors_++;
             this->last_error_ms_ = now_ms;
             return;
         }
-        
+
         // Check WiFi signal strength to avoid attempts on weak connections
         int8_t rssi = this->wifi_->wifi_rssi();
-        if (rssi < -85) {  // Very weak signal
+        if (rssi < -85) {
             ESP_LOGW(TAG, "WiFi signal too weak (RSSI: %d dBm), delaying request", rssi);
-            App.feed_wdt();
-            return;  // Skip this cycle, will retry next loop
+            return;
         }
-        
+
         const auto& source = this->sources_[this->current_request_index_];
-        ESP_LOGD(TAG, "Requesting (%d/%d): %s", this->current_request_index_ + 1, this->sources_.size(), source.url.c_str());
-        
-        // Feed watchdog multiple times during request setup
-        App.feed_wdt();
-        yield();  // Allow other tasks to run before blocking operations
-        
+        ESP_LOGD(TAG, "Requesting (%zu/%zu): %s",
+                 this->current_request_index_ + 1, this->sources_.size(), source.url.c_str());
+
         // Track request start time for timeout
         if (this->request_start_ms_ == 0) {
             this->request_start_ms_ = now_ms;
         }
-        
-        // Pre-feed watchdog before potentially blocking HTTP operations
-        App.feed_wdt();
-        
+
         this->http_action_->set_url(source.url.c_str());
-        
-        // CRITICAL: The play() call triggers HTTPClient which has blocking delays
-        // We can't prevent the blocking, but we can ensure watchdog is well-fed before
-        App.feed_wdt();
-        yield();
-        
         this->http_action_->play();
-        
-        // Immediately yield after starting request to let system process
-        yield();
-        App.feed_wdt();
-        
+
         this->current_request_index_++;
         last_request_ms = now_ms;
-        
-        // Feed watchdog after initiating request
-        App.feed_wdt();
-        
-        return; // Exit loop() to let system breathe
+        return;
     }
 
     this->refresh();
@@ -404,55 +358,30 @@ void Transit511::set_wifi(wifi::WiFiComponent *wifi) {
 }
 
 void Transit511::parse_transit_response(std::string body){
-    // Feed watchdog at start of potentially long parsing operation
-    App.feed_wdt();
-    //ESP_LOGD(TAG, "HTTP Response Body len: %d", body.length());
-
-    // Check available heap before processing
-#ifdef USE_ESP_IDF
-    size_t free_heap = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
-#else
-    size_t free_heap = ESP.getFreeHeap();
-#endif
-    const size_t MIN_FREE_HEAP = 20000; // Require at least 20KB free
-    if (free_heap < MIN_FREE_HEAP) {
-        ESP_LOGE(TAG, "Low memory: %zu bytes free (minimum: %zu)", free_heap, MIN_FREE_HEAP);
-        return;
-    }
-
-    // Validate response size to prevent memory exhaustion
-    const size_t MAX_RESPONSE_SIZE = 1024 * 1024; // 1MB limit
-    if (body.size() > MAX_RESPONSE_SIZE) {
-        ESP_LOGE(TAG, "Response too large: %zu bytes (limit: %zu)", body.size(), MAX_RESPONSE_SIZE);
-        return;
-    }
-    
     if (body.empty()) {
         ESP_LOGE(TAG, "Empty response body");
         return;
     }
 
+    // Validate response size
+    const size_t MAX_RESPONSE_SIZE = 1024 * 1024; // 1MB limit
+    if (body.size() > MAX_RESPONSE_SIZE) {
+        ESP_LOGE(TAG, "Response too large: %zu bytes (limit: %zu)", body.size(), MAX_RESPONSE_SIZE);
+        return;
+    }
+
     size_t start = body.find_first_of('{');
     if (start == std::string::npos) {
-        // not found
-        ESP_LOGE(TAG, "unable to find '{' to start json parsing from string size: %d", body.size());
+        ESP_LOGE(TAG, "Unable to find '{' to start json parsing from string size: %zu", body.size());
         if (body.size() > 0) {
-            // Safe substring with bounds checking
             size_t preview_len = std::min(body.size(), static_cast<size_t>(100));
             ESP_LOGE(TAG, "body[:100]: %.*s", static_cast<int>(preview_len), body.c_str());
         }
         return;
     }
     body = body.substr(start);
-    //ESP_LOGD(TAG, "HTTP Response Data: %s", body.c_str());
 
     bool parse_success = esphome::json::parse_json(body, [&](JsonObject root) -> bool {
-        //auto TAG = "Transit_JSON";
-        App.feed_wdt(); // Feed watchdog before JSON parsing
-        
-        // Add yield to allow other tasks to run during parsing
-        yield();
-        
         ESPTime now = this->rtc_->now();
 
         /*
@@ -480,22 +409,14 @@ void Transit511::parse_transit_response(std::string body){
         }
         
         std::vector<transitRouteETA> etas;
-        int iteration_count = 0;
         const size_t MAX_ETAS = 100; // Limit total ETAs to prevent memory exhaustion
-        
+
         for(const JsonObject& value : stopVisits) {
-            App.feed_wdt(); // feed watchdog
-            
-            // Limit total number of ETAs
             if (etas.size() >= MAX_ETAS) {
                 ESP_LOGW(TAG, "Reached maximum ETA limit (%zu), skipping remaining", MAX_ETAS);
                 break;
             }
-            
-            // Yield periodically to prevent blocking
-            if (++iteration_count % 5 == 0) {
-                yield();
-            }
+
             // extract vars from json
             auto lineName = value["MonitoredVehicleJourney"]["LineRef"].as<std::string>();
             auto direction = value["MonitoredVehicleJourney"]["DirectionRef"].as<std::string>();
@@ -595,52 +516,22 @@ void Transit511::parse_transit_response(std::string body){
 }
 
 void Transit511::sortETA() {
-    App.feed_wdt(); // Feed watchdog at start of sort
-    // temp variables to build the new sorted list and swap with the global ones
-    //std::vector<const transitRouteETA*> newETA;
     std::map<std::string, std::vector<const transitRouteETA*>> newRoutes;
 
-    // TODO make more efficient with a priority list
-
-    // iterate over all routes
-    int route_count = 0;
+    // Build map of routes to ETAs
     for (auto const& route_stop : this->reference_routes) {
-        App.feed_wdt(); // feed watchdog
-        
-        // Yield periodically to prevent blocking
-        if (++route_count % 3 == 0) {
-            yield();
-        }
-        
-        // iterate over all ETAs
         for(const auto& eta : route_stop.second) {
-            // add to vector of all ETAs
-            //newETA.push_back(&eta);
-            // add to map per line
             newRoutes[eta.Name].push_back(&eta);
         }
     }
-    // TODO do a form of insertion sort.
-   // sort(newETA.begin(), newETA.end(), etaCmp);
 
-    // sort all lines (with directions merged)
-    route_count = 0;
+    // Sort all lines (with directions merged)
     for (auto & route : newRoutes) {
-        App.feed_wdt(); // feed watchdog
-        
-        // Yield periodically during sorting
-        if (++route_count % 2 == 0) {
-            yield();
-        }
-        
-        // TODO do a form of insertion sort.
         sort(route.second.begin(), route.second.end(), etaCmp);
         route.second.shrink_to_fit();
     }
 
     this->routes.swap(newRoutes);
-    // this->allETAs.swap(newETA);
-    // this->allETAs.shrink_to_fit();
 }
 
 void Transit511::addETAs(std::vector<transitRouteETA> etas) {
