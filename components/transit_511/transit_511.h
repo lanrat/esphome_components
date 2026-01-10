@@ -1,12 +1,16 @@
 #pragma once
 #include "esphome/core/component.h"
 #include "esphome/components/time/real_time_clock.h"
-#include "esphome/components/http_request/http_request.h"
 #include "esphome/components/wifi/wifi_component.h"
 #include "esphome/core/color.h"
 #include <math.h>
 #include <map>
 #include <unordered_set>
+
+// FreeRTOS for background task
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/queue.h"
 
 namespace esphome {
 namespace transit_511 {
@@ -37,6 +41,20 @@ struct transitRouteETA {
     esphome::Color routeColor;
 };
 
+// HTTP request sent to background task
+struct HttpRequest {
+    char url[512];
+    size_t max_response_size;
+};
+
+// HTTP response from background task
+struct HttpResponse {
+    bool success;
+    int status_code;
+    uint32_t duration_ms;
+    char *body;        // Heap-allocated, receiver must free
+    size_t body_len;
+};
 
 class Transit511 : public Component {
     public:
@@ -50,8 +68,8 @@ class Transit511 : public Component {
         void set_time(time::RealTimeClock *rtc) { rtc_ = rtc; }
         void set_wifi(wifi::WiFiComponent *wifi);
         void set_refresh(uint32_t refresh_ms) { this->refresh_ms_ = refresh_ms; };
-        void set_http(http_request::HttpRequestComponent * http);
-        void set_max_response_buffer_size(size_t max_response_buffer_size);
+        void set_max_response_buffer_size(size_t max_response_buffer_size) { this->max_response_buffer_size_ = max_response_buffer_size; }
+        void set_http_timeout(uint32_t timeout_ms) { this->http_timeout_ms_ = timeout_ms; }
         void set_route_color(std::string route, esphome::Color color) {
             this->route_colors_[route] = color;
         }
@@ -87,11 +105,21 @@ class Transit511 : public Component {
         bool is_route_active(std::string route){ return this->active_[route]; };
 
     protected:
-        void http_response_callback(std::shared_ptr<http_request::HttpContainer> response);
-        void http_error_callback();
-        http_request::HttpRequestSendAction<> *http_action_;
+        // Process HTTP response received from background task
+        void process_http_response(const HttpResponse &response);
+
+        // Background HTTP task (static so it can be used as task function)
+        static void http_task(void *arg);
+
+        // FreeRTOS task and queues
+        TaskHandle_t http_task_handle_ = nullptr;
+        QueueHandle_t request_queue_ = nullptr;
+        QueueHandle_t response_queue_ = nullptr;
+
+        // HTTP settings
         size_t max_response_buffer_size_ = 0;
-        http_request::HttpRequestComponent * http_;
+        uint32_t http_timeout_ms_ = 10000;
+
         wifi::WiFiComponent *wifi_;
 
         // logic

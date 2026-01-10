@@ -5,112 +5,179 @@
 
 #include "esphome/components/json/json_util.h"
 
+// ESP-IDF HTTP client for async requests
+#include "esp_http_client.h"
+
 namespace esphome {
 namespace transit_511 {
 
 static const char *const TAG = "transit_511";
 
+// Stack size for HTTP task (needs enough for HTTP client + TLS)
+static const uint32_t HTTP_TASK_STACK_SIZE = 8192;
+// Queue sizes
+static const uint32_t REQUEST_QUEUE_SIZE = 4;
+static const uint32_t RESPONSE_QUEUE_SIZE = 4;
+
 
 void Transit511::setup() {
-    //  set action
-    this->http_action_ = new http_request::HttpRequestSendAction<>(this->http_);
-    this->http_action_->set_method("GET");
-    if (this->max_response_buffer_size_ > 0) {
-        this->http_action_->set_max_response_buffer_size(this->max_response_buffer_size_);
+    // Create request and response queues
+    this->request_queue_ = xQueueCreate(REQUEST_QUEUE_SIZE, sizeof(HttpRequest));
+    this->response_queue_ = xQueueCreate(RESPONSE_QUEUE_SIZE, sizeof(HttpResponse));
+
+    if (this->request_queue_ == nullptr || this->response_queue_ == nullptr) {
+        ESP_LOGE(TAG, "Failed to create HTTP queues");
+        return;
     }
 
-    this->http_->set_timeout(10000);  // 10 second timeout
-    this->http_->set_watchdog_timeout(15000);  // 15 seconds watchdog for HTTP operations
+    // Create background HTTP task
+    BaseType_t result = xTaskCreatePinnedToCore(
+        Transit511::http_task,      // Task function
+        "transit_http",             // Task name
+        HTTP_TASK_STACK_SIZE,       // Stack size
+        this,                       // Parameter (this pointer)
+        1,                          // Priority (low, background task)
+        &this->http_task_handle_,   // Task handle
+        1                           // Core 1 (keep core 0 for main loop)
+    );
 
-    // Disable GZIP to simplify response handling
-    this->http_action_->add_request_header("Accept-Encoding", "identity");
+    if (result != pdPASS) {
+        ESP_LOGE(TAG, "Failed to create HTTP task");
+        return;
+    }
 
-    // HTTP response trigger - get_success_trigger() returns container only, we read body manually
-    auto http_response_trigger = this->http_action_->get_success_trigger();
-    auto http_response_trigger_automation = new Automation<std::shared_ptr<http_request::HttpContainer>>(http_response_trigger);
-    auto *http_response_lambda = new LambdaAction<std::shared_ptr<http_request::HttpContainer>>
-    ([this](const std::shared_ptr<http_request::HttpContainer> &response) -> void { this->http_response_callback(response); });
-    http_response_trigger_automation->add_actions({http_response_lambda});
-
-    // HTTP error trigger - use get_error_trigger() instead of register_error_trigger()
-    auto http_error_trigger = this->http_action_->get_error_trigger();
-    auto http_error_trigger_automation = new Automation<>(http_error_trigger);
-    auto http_error_lambda = new LambdaAction<>([this]() -> void { this->http_error_callback(); });
-    http_error_trigger_automation->add_actions({http_error_lambda});
+    ESP_LOGI(TAG, "Background HTTP task started");
 }
 
-void Transit511::http_response_callback(std::shared_ptr<http_request::HttpContainer> response) {
-    ESP_LOGD(TAG, "response finished in %dms content length: %zu, code: %d",
-             response->duration_ms, response->content_length, response->status_code);
+// Background HTTP task - runs on core 1, performs blocking HTTP requests
+void Transit511::http_task(void *arg) {
+    Transit511 *self = static_cast<Transit511 *>(arg);
+    HttpRequest request;
 
-    if (!http_request::is_success(response->status_code)) {
-        ESP_LOGE(TAG, "HTTP Error code: %d", response->status_code);
-        this->consecutive_errors_++;
-        this->last_error_ms_ = millis();
-    } else {
-        // Read response body from container
-        std::string body;
-        size_t content_length = response->content_length;
-        size_t max_length = this->max_response_buffer_size_ > 0
-            ? std::min(content_length, this->max_response_buffer_size_)
-            : content_length;
+    ESP_LOGD(TAG, "HTTP task running");
 
-        if (max_length > 0) {
-            RAMAllocator<uint8_t> allocator;
-            uint8_t *buf = allocator.allocate(max_length);
-            if (buf != nullptr) {
-                size_t read_index = 0;
-                while (response->get_bytes_read() < max_length) {
-                    int read = response->read(buf + read_index, std::min<size_t>(max_length - read_index, 4096));
-                    if (read <= 0) {
+    while (true) {
+        // Wait for a request (blocks until one is available)
+        if (xQueueReceive(self->request_queue_, &request, portMAX_DELAY) != pdTRUE) {
+            continue;
+        }
+
+        ESP_LOGD(TAG, "HTTP task processing request: %s", request.url);
+        uint32_t start_ms = millis();
+
+        // Prepare response
+        HttpResponse response = {
+            .success = false,
+            .status_code = 0,
+            .duration_ms = 0,
+            .body = nullptr,
+            .body_len = 0
+        };
+
+        // Configure HTTP client
+        esp_http_client_config_t config = {};
+        config.url = request.url;
+        config.timeout_ms = self->http_timeout_ms_;
+        config.buffer_size = 4096;
+        config.buffer_size_tx = 1024;
+
+        esp_http_client_handle_t client = esp_http_client_init(&config);
+        if (client == nullptr) {
+            ESP_LOGE(TAG, "Failed to initialize HTTP client");
+            response.duration_ms = millis() - start_ms;
+            xQueueSend(self->response_queue_, &response, portMAX_DELAY);
+            continue;
+        }
+
+        // Set headers
+        esp_http_client_set_header(client, "Accept-Encoding", "identity");
+
+        // Open connection and send request
+        esp_err_t err = esp_http_client_open(client, 0);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to open HTTP connection: %s", esp_err_to_name(err));
+            esp_http_client_cleanup(client);
+            response.duration_ms = millis() - start_ms;
+            xQueueSend(self->response_queue_, &response, portMAX_DELAY);
+            continue;
+        }
+
+        // Fetch headers
+        int content_length = esp_http_client_fetch_headers(client);
+        response.status_code = esp_http_client_get_status_code(client);
+
+        ESP_LOGD(TAG, "HTTP status: %d, content_length: %d", response.status_code, content_length);
+
+        // Read body
+        if (response.status_code >= 200 && response.status_code < 300) {
+            // Determine buffer size
+            size_t buffer_size = (content_length > 0) ? content_length : 32768;
+            if (request.max_response_size > 0 && buffer_size > request.max_response_size) {
+                buffer_size = request.max_response_size;
+            }
+
+            response.body = (char *)malloc(buffer_size + 1);
+            if (response.body != nullptr) {
+                size_t total_read = 0;
+                int read_len;
+
+                while (total_read < buffer_size) {
+                    read_len = esp_http_client_read(client, response.body + total_read, buffer_size - total_read);
+                    if (read_len <= 0) {
                         break;
                     }
-                    read_index += read;
+                    total_read += read_len;
                 }
-                body.assign((char *) buf, read_index);
-                allocator.deallocate(buf, max_length);
+
+                response.body[total_read] = '\0';
+                response.body_len = total_read;
+                response.success = true;
+                ESP_LOGD(TAG, "HTTP read %zu bytes", total_read);
+            } else {
+                ESP_LOGE(TAG, "Failed to allocate response buffer");
             }
         }
 
-        this->parse_transit_response(body);
-        this->consecutive_errors_ = 0; // Reset error counter on success
+        esp_http_client_close(client);
+        esp_http_client_cleanup(client);
+
+        response.duration_ms = millis() - start_ms;
+        ESP_LOGD(TAG, "HTTP request completed in %dms", response.duration_ms);
+
+        // Send response back to main thread
+        xQueueSend(self->response_queue_, &response, portMAX_DELAY);
     }
-    
-    // Decrement pending requests and clear running flag when all complete
+}
+
+// Process HTTP response on main thread
+void Transit511::process_http_response(const HttpResponse &response) {
+    ESP_LOGD(TAG, "Processing response: success=%d, status=%d, duration=%dms, body_len=%zu",
+             response.success, response.status_code, response.duration_ms, response.body_len);
+
+    if (!response.success || response.status_code < 200 || response.status_code >= 300) {
+        ESP_LOGE(TAG, "HTTP Error: success=%d, status=%d", response.success, response.status_code);
+        this->consecutive_errors_++;
+        this->last_error_ms_ = millis();
+    } else if (response.body != nullptr && response.body_len > 0) {
+        std::string body(response.body, response.body_len);
+        this->parse_transit_response(body);
+        this->consecutive_errors_ = 0;
+    }
+
+    // Free the body buffer (allocated in task)
+    if (response.body != nullptr) {
+        free(response.body);
+    }
+
+    // Track pending requests
     if (this->pending_requests_ > 0) {
         this->pending_requests_--;
         if (this->pending_requests_ == 0) {
             this->running_ = false;
-            this->current_request_index_ = 0;  // Reset for next refresh
-            this->request_start_ms_ = 0;  // Reset request timer
+            this->current_request_index_ = 0;
+            this->request_start_ms_ = 0;
             ESP_LOGD(TAG, "All HTTP requests completed");
         }
-    }
-}
-
-void Transit511::http_error_callback() {
-    ESP_LOGE(TAG, "HTTP Error!");
-    this->consecutive_errors_++;
-    this->last_error_ms_ = millis();
-    
-    // Also handle error case for pending request tracking
-    if (this->pending_requests_ > 0) {
-        this->pending_requests_--;
-        if (this->pending_requests_ == 0) {
-            this->running_ = false;
-            this->current_request_index_ = 0;  // Reset for next refresh
-            this->request_start_ms_ = 0;  // Reset request timer
-            ESP_LOGD(TAG, "All HTTP requests completed (with errors)");
-        }
-    }
-}
-
-void Transit511::set_max_response_buffer_size(size_t max_response_buffer_size) {
-    this->max_response_buffer_size_ = max_response_buffer_size;
-
-    // set the action's buffer size in case it is being updated dynamically
-    if (this->http_action_) {
-        this->http_action_->set_max_response_buffer_size(this->max_response_buffer_size_);
     }
 }
 
@@ -124,9 +191,17 @@ void Transit511::loop() {
         }
     }
 
+    // Poll for HTTP responses from background task (non-blocking)
+    if (this->response_queue_ != nullptr) {
+        HttpResponse response;
+        while (xQueueReceive(this->response_queue_, &response, 0) == pdTRUE) {
+            this->process_http_response(response);
+        }
+    }
+
     // Check for stuck requests (safety timeout)
     if (this->running_ && this->request_start_ms_ > 0) {
-        const uint32_t REQUEST_TIMEOUT_MS = 30000; // 30 second overall timeout
+        const uint32_t REQUEST_TIMEOUT_MS = 60000; // 60 second overall timeout (longer since async)
         if (millis() - this->request_start_ms_ > REQUEST_TIMEOUT_MS) {
             ESP_LOGE(TAG, "Request timeout exceeded, resetting state");
             this->running_ = false;
@@ -135,21 +210,21 @@ void Transit511::loop() {
             this->request_start_ms_ = 0;
             this->consecutive_errors_++;
             this->last_error_ms_ = millis();
+
+            // Drain any stale responses from the queue to prevent counter desync
+            HttpResponse stale_response;
+            while (xQueueReceive(this->response_queue_, &stale_response, 0) == pdTRUE) {
+                ESP_LOGW(TAG, "Discarding stale response after timeout");
+                if (stale_response.body != nullptr) {
+                    free(stale_response.body);
+                }
+            }
             return;
         }
     }
 
-    // Small delay between HTTP requests to avoid overwhelming the network stack
-    static uint32_t last_request_ms = 0;
-    const uint32_t REQUEST_DELAY_MS = 100;
-
-    // Process one HTTP request per loop() call if we have pending requests
+    // Queue HTTP requests if we have pending ones to send
     if (this->running_ && this->current_request_index_ < this->sources_.size()) {
-        uint32_t now_ms = millis();
-        if (now_ms - last_request_ms < REQUEST_DELAY_MS) {
-            return;
-        }
-
         // Check WiFi is still connected before attempting request
         if (!this->wifi_->is_connected()) {
             ESP_LOGW(TAG, "WiFi disconnected during request sequence, aborting");
@@ -159,7 +234,7 @@ void Transit511::loop() {
             this->request_start_ms_ = 0;
             this->wifi_connected_ms_ = 0;
             this->consecutive_errors_++;
-            this->last_error_ms_ = now_ms;
+            this->last_error_ms_ = millis();
             return;
         }
 
@@ -170,20 +245,31 @@ void Transit511::loop() {
             return;
         }
 
-        const auto& source = this->sources_[this->current_request_index_];
-        ESP_LOGD(TAG, "Requesting (%zu/%zu): %s",
-                 this->current_request_index_ + 1, this->sources_.size(), source.url.c_str());
+        // Queue all remaining requests to the background task
+        while (this->current_request_index_ < this->sources_.size()) {
+            const auto& source = this->sources_[this->current_request_index_];
 
-        // Track request start time for timeout
-        if (this->request_start_ms_ == 0) {
-            this->request_start_ms_ = now_ms;
+            HttpRequest request = {};
+            strncpy(request.url, source.url.c_str(), sizeof(request.url) - 1);
+            request.max_response_size = this->max_response_buffer_size_;
+
+            ESP_LOGD(TAG, "Queuing request (%zu/%zu): %s",
+                     this->current_request_index_ + 1, this->sources_.size(), request.url);
+
+            // Try to queue (non-blocking check)
+            if (xQueueSend(this->request_queue_, &request, 0) != pdTRUE) {
+                // Queue full, try again next loop
+                ESP_LOGD(TAG, "Request queue full, will retry");
+                break;
+            }
+
+            // Track request start time for timeout
+            if (this->request_start_ms_ == 0) {
+                this->request_start_ms_ = millis();
+            }
+
+            this->current_request_index_++;
         }
-
-        this->http_action_->set_url(source.url.c_str());
-        this->http_action_->play();
-
-        this->current_request_index_++;
-        last_request_ms = now_ms;
         return;
     }
 
@@ -224,7 +310,7 @@ void Transit511::refresh(bool force) {
         }
     }
 
-    if (!this->http_action_) {
+    if (this->request_queue_ == nullptr) {
         // not ready yet
         ESP_LOGE(TAG, "ERROR: refresh() called before setup()");
         return;
@@ -548,10 +634,6 @@ void Transit511::addETAs(std::vector<transitRouteETA> etas) {
     etas.clear();
 }
 
-// this MUST be called after set_max_response_buffer_size
-void Transit511::set_http(http_request::HttpRequestComponent * http) {
-    this->http_ = http;
-}
 
 void Transit511::set_next_call_ns_() {
   auto wait_ms = this->refresh_ms_;

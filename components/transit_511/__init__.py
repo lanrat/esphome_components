@@ -1,19 +1,15 @@
 CODEOWNERS = ["@lanrat"]
 import esphome.codegen as cg
 import esphome.config_validation as cv
-from esphome.components.http_request import (
-    CONF_HTTP_REQUEST_ID,
-    CONF_MAX_RESPONSE_BUFFER_SIZE,
-    HttpRequestComponent,
-    )
 from esphome.components import time, wifi, color
 from esphome.const import (
     CONF_ID,
     CONF_TIME_ID,
     CONF_WIFI,
+    CONF_TIMEOUT,
 )
 
-DEPENDENCIES = ["time", "http_request", "wifi"]
+DEPENDENCIES = ["time", "wifi"]
 
 CONF_SOURCES = "sources"
 CONF_REFRESH_INTERVAL = "refresh_interval"
@@ -23,6 +19,7 @@ CONF_DIRECTION_COLORS = "direction_colors"
 CONF_SEPARATOR_COLOR = "separator_color"
 CONF_MAX_ETA = "max_eta"
 CONF_ROUTE_FILTER = "route_filter"
+CONF_MAX_RESPONSE_BUFFER_SIZE = "max_response_buffer_size"
 
 transit_511_ns = cg.esphome_ns.namespace("transit_511")
 
@@ -36,7 +33,6 @@ COLOR_SCHEMA = cv.Schema({
     
 CONFIG_SCHEMA = cv.Schema({
     cv.GenerateID(): cv.declare_id(Transit511),
-    cv.GenerateID(CONF_HTTP_REQUEST_ID): cv.use_id(HttpRequestComponent),
     cv.GenerateID(CONF_TIME_ID): cv.use_id(time.RealTimeClock),
     cv.GenerateID(CONF_WIFI): cv.use_id(wifi.WiFiComponent),
     cv.Required(CONF_SOURCES): cv.All(
@@ -45,7 +41,8 @@ CONFIG_SCHEMA = cv.Schema({
     cv.Optional(
         CONF_REFRESH_INTERVAL, default="5min"
     ): cv.positive_time_period_seconds,
-    cv.Optional(CONF_MAX_RESPONSE_BUFFER_SIZE, default="1kB"): cv.validate_bytes,
+    cv.Optional(CONF_MAX_RESPONSE_BUFFER_SIZE, default="64kB"): cv.validate_bytes,
+    cv.Optional(CONF_TIMEOUT, default="10s"): cv.positive_time_period_milliseconds,
     cv.Optional(CONF_DEFAULT_ROUTE_COLOR): cv.use_id(color.ColorStruct),
     cv.Optional(CONF_SEPARATOR_COLOR): cv.use_id(color.ColorStruct),
     cv.Optional(CONF_ROUTE_COLORS): COLOR_SCHEMA,
@@ -63,15 +60,13 @@ async def to_code(config):
     cg.add(var.set_refresh(config[CONF_REFRESH_INTERVAL].total_milliseconds))
     cg.add(var.set_max_eta_ms(config[CONF_MAX_ETA].total_milliseconds))
     cg.add(var.set_max_response_buffer_size(config[CONF_MAX_RESPONSE_BUFFER_SIZE]))
+    cg.add(var.set_http_timeout(config[CONF_TIMEOUT].total_milliseconds))
 
     time_ = await cg.get_variable(config[CONF_TIME_ID])
     cg.add(var.set_time(time_))
-    
+
     wifi_ = await cg.get_variable(config[CONF_WIFI])
     cg.add(var.set_wifi(wifi_))
-    
-    http_ = await cg.get_variable(config[CONF_HTTP_REQUEST_ID])
-    cg.add(var.set_http(http_))
    
     if color_separator_config := config.get(CONF_SEPARATOR_COLOR):
         color_separator_route = await cg.get_variable(color_separator_config)
