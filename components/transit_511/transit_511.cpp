@@ -80,6 +80,9 @@ void Transit511::http_task(void *arg) {
         config.timeout_ms = self->http_timeout_ms_;
         config.buffer_size = 4096;
         config.buffer_size_tx = 1024;
+        // Allow HTTPS without certificate verification (insecure but useful for testing/proxies)
+        config.skip_cert_common_name_check = true;
+        config.crt_bundle_attach = nullptr;  // Don't use certificate bundle
 
         esp_http_client_handle_t client = esp_http_client_init(&config);
         if (client == nullptr) {
@@ -294,18 +297,15 @@ void Transit511::refresh(bool force) {
         if (this->consecutive_errors_ >= MAX_ERRORS) {
             const uint32_t LONG_RETRY_MS = 600000; // 10 minutes for recovery
             if (millis() - this->last_error_ms_ < LONG_RETRY_MS) {
-                ESP_LOGD(TAG, "Max errors reached (%d), waiting %dms before retry", 
-                         this->consecutive_errors_, LONG_RETRY_MS - (millis() - this->last_error_ms_));
-                return;
+                return;  // Silently wait during backoff
             }
             // Reset error count after long wait
+            ESP_LOGI(TAG, "Backoff complete after %d errors, retrying", this->consecutive_errors_);
             this->consecutive_errors_ = 0;
         } else {
             uint32_t backoff_ms = std::min((uint32_t)(1000 * pow(2, this->consecutive_errors_)), MAX_BACKOFF_MS);
             if (millis() - this->last_error_ms_ < backoff_ms) {
-                ESP_LOGD(TAG, "In error backoff period (%d errors, %dms remaining)", 
-                         this->consecutive_errors_, backoff_ms - (millis() - this->last_error_ms_));
-                return;
+                return;  // Silently wait during backoff
             }
         }
     }
