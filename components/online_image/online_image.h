@@ -1,16 +1,14 @@
 #pragma once
 
+#include "download_buffer.h"
 #include "esphome/components/http_request/http_request.h"
-#include "esphome/components/image/image.h"
-#include "esphome/components/animation/animation.h"
+#include "esphome/components/runtime_image/runtime_image.h"
+#include "esphome/core/automation.h"
 #include "esphome/core/component.h"
 #include "esphome/core/defines.h"
 #include "esphome/core/helpers.h"
 
-#include "image_decoder.h"
-
-namespace esphome {
-namespace online_image {
+namespace esphome::online_image {
 
 using t_http_codes = enum {
   HTTP_CODE_OK = 200,
@@ -19,29 +17,13 @@ using t_http_codes = enum {
 };
 
 /**
- * @brief Format that the image is encoded with.
- */
-enum ImageFormat {
-  /** Automatically detect from MIME type. Not supported yet. */
-  AUTO,
-  /** JPEG format. */
-  JPEG,
-  /** WEBP format. */
-  WEBP,
-  /** PNG format. */
-  PNG,
-  /** BMP format. */
-  BMP,
-};
-
-/**
  * @brief Download an image from a given URL, and decode it using the specified decoder.
  * The image will then be stored in a buffer, so that it can be re-displayed without the
  * need to re-download or re-decode.
  */
-class OnlineImage : public PollingComponent,
-                    public animation::Animation,
-                    public Parented<esphome::http_request::HttpRequestComponent> {
+class OnlineImage final : public PollingComponent,
+                          public runtime_image::RuntimeImage,
+                          public Parented<esphome::http_request::HttpRequestComponent> {
  public:
   /**
    * @brief Construct a new OnlineImage object.
@@ -49,32 +31,33 @@ class OnlineImage : public PollingComponent,
    * @param url URL to download the image from.
    * @param width Desired width of the target image area.
    * @param height Desired height of the target image area.
-   * @param format Format that the image is encoded in (@see ImageFormat).
+   * @param format Format that the image is encoded in (@see runtime_image::ImageFormat).
+   * @param type The pixel format for the image.
+   * @param transparency The transparency type for the image.
+   * @param placeholder Optional placeholder image to show while loading.
    * @param buffer_size Size of the buffer used to download the image.
+   * @param is_big_endian Whether the image is stored in big-endian format.
    */
-  OnlineImage(const std::string &url, int width, int height, ImageFormat format, image::ImageType type,
-              image::Transparency transparency, uint32_t buffer_size);
-
-  void draw(int x, int y, display::Display *display, Color color_on, Color color_off) override;
+  OnlineImage(const std::string &url, int width, int height, runtime_image::ImageFormat format, image::ImageType type,
+              image::Transparency transparency, image::Image *placeholder, uint32_t buffer_size,
+              bool is_big_endian = false);
 
   void update() override;
   void loop() override;
-  void map_chroma_key(Color &color);
 
   /** Set the URL to download the image from. */
   void set_url(const std::string &url) {
     if (this->validate_url_(url)) {
       this->url_ = url;
     }
+    this->etag_ = "";
+    this->last_modified_ = "";
   }
 
-  /**
-   * @brief Set the image that needs to be shown as long as the downloaded image
-   *  is not available.
-   *
-   * @param placeholder Pointer to the (@link Image) to show as placeholder.
-   */
-  void set_placeholder(image::Image *placeholder) { this->placeholder_ = placeholder; }
+  /** Add the request header */
+  template<typename V> void add_request_header(const std::string &header, V value) {
+    this->request_headers_.push_back(std::pair<std::string, TemplatableValue<std::string>>(header, value));
+  }
 
   /**
    * Release the buffer storing the image. The image will need to be downloaded again
@@ -82,70 +65,21 @@ class OnlineImage : public PollingComponent,
    */
   void release();
 
-  /**
-   * Resize the download buffer
-   *
-   * @param size The new size for the download buffer.
-   */
-  size_t resize_download_buffer(size_t size) { return this->download_buffer_.resize(size); }
-
-  void add_on_finished_callback(std::function<void()> &&callback);
-  void add_on_error_callback(std::function<void()> &&callback);
+  template<typename F> void add_on_finished_callback(F &&callback) {
+    this->download_finished_callback_.add(std::forward<F>(callback));
+  }
+  template<typename F> void add_on_error_callback(F &&callback) {
+    this->download_error_callback_.add(std::forward<F>(callback));
+  }
 
  protected:
   bool validate_url_(const std::string &url);
-
-  RAMAllocator<uint8_t> allocator_{};
-
-  uint32_t get_buffer_size_() const { return get_buffer_size_(this->buffer_width_, this->buffer_height_, this->animation_frame_count_); }
-  int get_buffer_size_(int width, int height, int frames) const { return frames * ((this->get_bpp() * width + 7u) / 8u * height); }
-
-  int get_position_(int x, int y, int frame = 0) const {
-    int frame_offset = this->buffer_frame_size_ * frame;
-    return ((x + y * this->buffer_width_) * this->get_bpp() / 8) + frame_offset;
-  }
-
-  ESPHOME_ALWAYS_INLINE bool is_auto_resize_() const { return this->fixed_width_ == 0 || this->fixed_height_ == 0; }
-
-  /**
-   * @brief Resize the image buffer to the requested dimensions.
-   *
-   * The buffer will be allocated if not existing.
-   * If the dimensions have been fixed in the yaml config, the buffer will be created
-   * with those dimensions and not resized, even on request.
-   * Otherwise, the old buffer will be deallocated and a new buffer with the requested
-   * allocated
-   *
-   * @param width
-   * @param height
-   * @param frames
-   * @return 0 if no memory could be allocated, the size of the new buffer otherwise.
-   */
-  size_t resize_(int width, int height, int frames = 1);
-
-  /**
-   * @brief Draw a pixel into the buffer.
-   *
-   * This is used by the decoder to fill the buffer that will later be displayed
-   * by the `draw` method. This will internally convert the supplied 32 bit RGBA
-   * color into the requested image storage format.
-   *
-   * @param x Horizontal pixel position.
-   * @param y Vertical pixel position.
-   * @param color 32 bit color to put into the pixel.
-   * @param frame the frame to draw the image buffer to if animated
-   */
-  void draw_pixel_(int x, int y, Color color, int frame = 0);
-
   void end_connection_();
 
-  CallbackManager<void()> download_finished_callback_{};
+  CallbackManager<void(bool)> download_finished_callback_{};
   CallbackManager<void()> download_error_callback_{};
 
   std::shared_ptr<http_request::HttpContainer> downloader_{nullptr};
-  std::unique_ptr<ImageDecoder> decoder_{nullptr};
-
-  uint8_t *buffer_;
   DownloadBuffer download_buffer_;
   /**
    * This is the *initial* size of the download buffer, not the current size.
@@ -154,56 +88,68 @@ class OnlineImage : public PollingComponent,
    */
   size_t download_buffer_initial_size_;
 
-  const ImageFormat format_;
-  image::Image *placeholder_{nullptr};
+  std::string url_;
 
-  std::string url_{""};
+  std::vector<std::pair<std::string, TemplatableValue<std::string>>> request_headers_;
 
-  /** width requested on configuration, or 0 if non specified. */
-  const int fixed_width_;
-  /** height requested on configuration, or 0 if non specified. */
-  const int fixed_height_;
   /**
-   * Actual width of the current image. If fixed_width_ is specified,
-   * this will be equal to it; otherwise it will be set once the decoding
-   * starts and the original size is known.
-   * This needs to be separate from "BaseImage::get_width()" because the latter
-   * must return 0 until the image has been decoded (to avoid showing partially
-   * decoded images).
+   * The value of the ETag HTTP header provided in the last response.
    */
-  int buffer_width_;
+  std::string etag_;
   /**
-   * Actual height of the current image. If fixed_height_ is specified,
-   * this will be equal to it; otherwise it will be set once the decoding
-   * starts and the original size is known.
-   * This needs to be separate from "BaseImage::get_height()" because the latter
-   * must return 0 until the image has been decoded (to avoid showing partially
-   * decoded images).
+   * The value of the Last-Modified HTTP header provided in the last response.
    */
-  int buffer_height_;
-  /** The calculated size of a single frame for the given width and height in the buffer */
-  int buffer_frame_size_;
+  std::string last_modified_;
 
-  time_t start_time_;
-
-  friend bool ImageDecoder::set_size(int width, int height, int frames);
-  friend void ImageDecoder::draw(int x, int y, int w, int h, const Color &color, int frame);
+  uint32_t start_time_{0};
 };
 
-template<typename... Ts> class OnlineImageSetUrlAction : public Action<Ts...> {
+template<typename... Ts> class OnlineImageSetUrlAction final : public Action<Ts...> {
  public:
   OnlineImageSetUrlAction(OnlineImage *parent) : parent_(parent) {}
   TEMPLATABLE_VALUE(std::string, url)
+  TEMPLATABLE_VALUE(bool, update)
   void play(const Ts &...x) override {
     this->parent_->set_url(this->url_.value(x...));
-    this->parent_->update();
+    if (this->update_.value(x...)) {
+      this->parent_->update();
+    }
   }
 
  protected:
   OnlineImage *parent_;
 };
 
-template<typename... Ts> class OnlineImageReleaseAction : public Action<Ts...> {
+// Frame control for animated images (WebP); animation::Animation is final, so these replace animation.*_frame
+template<typename... Ts> class OnlineImageNextFrameAction final : public Action<Ts...> {
+ public:
+  OnlineImageNextFrameAction(OnlineImage *parent) : parent_(parent) {}
+  void play(const Ts &...x) override { this->parent_->next_frame(); }
+
+ protected:
+  OnlineImage *parent_;
+};
+
+template<typename... Ts> class OnlineImagePrevFrameAction final : public Action<Ts...> {
+ public:
+  OnlineImagePrevFrameAction(OnlineImage *parent) : parent_(parent) {}
+  void play(const Ts &...x) override { this->parent_->prev_frame(); }
+
+ protected:
+  OnlineImage *parent_;
+};
+
+template<typename... Ts> class OnlineImageSetFrameAction final : public Action<Ts...> {
+ public:
+  OnlineImageSetFrameAction(OnlineImage *parent) : parent_(parent) {}
+  TEMPLATABLE_VALUE(int, frame)
+  void play(const Ts &...x) override { this->parent_->set_frame(this->frame_.value(x...)); }
+
+ protected:
+  OnlineImage *parent_;
+};
+
+template<typename... Ts> class OnlineImageReleaseAction final : public Action<Ts...> {
  public:
   OnlineImageReleaseAction(OnlineImage *parent) : parent_(parent) {}
   void play(const Ts &...x) override { this->parent_->release(); }
@@ -212,19 +158,4 @@ template<typename... Ts> class OnlineImageReleaseAction : public Action<Ts...> {
   OnlineImage *parent_;
 };
 
-class DownloadFinishedTrigger : public Trigger<> {
- public:
-  explicit DownloadFinishedTrigger(OnlineImage *parent) {
-    parent->add_on_finished_callback([this]() { this->trigger(); });
-  }
-};
-
-class DownloadErrorTrigger : public Trigger<> {
- public:
-  explicit DownloadErrorTrigger(OnlineImage *parent) {
-    parent->add_on_error_callback([this]() { this->trigger(); });
-  }
-};
-
-}  // namespace online_image
-}  // namespace esphome
+}  // namespace esphome::online_image
